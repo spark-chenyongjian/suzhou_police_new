@@ -1,0 +1,31 @@
+# DeepAnalyze Model Configuration
+# Supports any OpenAI-compatible endpoint (Ollama, vLLM, LM Studio, Claude API, etc.)
+
+models:
+  main:
+    provider: openai-compatible
+    endpoint: http://localhost:11434/v1
+    # apiKey: sk-xxx  # Required for remote APIs, optional for local
+    model: deepseek-r1:7b
+    maxTokens: 32768
+    supportsToolUse: true
+
+  # Example: Anthropic Claude via API
+  # claude:
+  #   provider: anthropic
+  #   endpoint: https://api.anthropic.com/v1
+  #   apiKey: sk-ant-xxx
+  #   model: claude-sonnet-4-5-20251022
+  #   maxTokens: 8096
+
+  # Example: summarizer with smaller model
+  # summarizer:
+  #   provider: openai-compatible
+  #   endpoint: http://localhost:11434/v1
+  #   model: qwen2.5:3b
+  #   maxTokens: 4096
+
+defaults:
+  main: main
+  # summarizer: summarizer
+  # embedding: embedding
