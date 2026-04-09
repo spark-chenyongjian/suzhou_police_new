@@ -2,6 +2,7 @@ import { DB } from "./store/database.js";
 import { createApp } from "./server/app.js";
 import { getModelRouter } from "./models/router.js";
 import { startDocling, getDoclingManager } from "./subprocess/docling-client.js";
+import { loadPlugins, loadSkills, getPlugins, getSkills } from "./plugins/loader.js";
 import { existsSync } from "fs";
 import { join } from "path";
 
@@ -31,6 +32,11 @@ if (existsSync(join(doclingServiceDir, "main.py"))) {
 } else {
   console.warn("[Docling] Service not found — document parsing unavailable.");
 }
+
+// Load plugins and skills
+loadPlugins();
+loadSkills();
+console.log(`[Plugins] ${getPlugins().length} plugin(s) loaded, ${getSkills().length} skill(s) loaded.`);
 
 // Start HTTP server
 const app = createApp();

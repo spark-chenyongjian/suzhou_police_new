@@ -11,7 +11,8 @@
 
 import { join } from "path";
 import { getModelRouter } from "../models/router.js";
-import { createWikiPage, listWikiPagesByDoc, wikiDir, docDir } from "./page-manager.js";
+import { createWikiPage } from "./page-manager.js";
+import { extractEntities, buildEntityLinks } from "./entity-extractor.js";
 import type { ChatMessage } from "../models/provider.js";
 
 export interface CompileOptions {
@@ -81,6 +82,19 @@ export async function compileDocument(opts: CompileOptions): Promise<CompileResu
     tokenCount: l0Tokens,
     metadata,
   });
+
+  // ── Entity extraction + link building ────────────────────────────────────
+  onProgress?.("实体提取 + 正反向链接构建");
+  try {
+    const { entities } = await extractEntities(l1Content, filename);
+    if (entities.length > 0) {
+      await buildEntityLinks(kbId, l1Page.id, entities);
+      onProgress?.(`提取到 ${entities.length} 个实体`);
+    }
+  } catch (err) {
+    // Entity extraction is non-critical — log but don't fail compilation
+    console.warn(`[Compiler] Entity extraction failed for ${filename}:`, err);
+  }
 
   return { l0PageId: l0Page.id, l1PageId: l1Page.id, l2PageId: l2Page.id };
 }

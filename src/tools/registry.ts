@@ -9,6 +9,7 @@ import { KbSearchTool } from "./KbSearchTool/index.js";
 import { ExpandTool } from "./ExpandTool/index.js";
 import { WikiBrowseTool } from "./WikiBrowseTool/index.js";
 import { DoclingParseTool } from "./DoclingParseTool/index.js";
+import { ReportGenerateTool } from "./ReportGenerateTool/index.js";
 
 export interface ToolDefinition {
   name: string;
@@ -18,18 +19,18 @@ export interface ToolDefinition {
   call(input: unknown): Promise<string>;
 }
 
-// Registry map
 const _registry = new Map<string, ToolDefinition>();
 
 function register(tool: ToolDefinition) {
   _registry.set(tool.name, tool);
 }
 
-// Register all DeepAnalyze tools
+// ── Core DeepAnalyze Tools ────────────────────────────────────────────────
 register(KbSearchTool as ToolDefinition);
 register(ExpandTool as ToolDefinition);
 register(WikiBrowseTool as ToolDefinition);
 register(DoclingParseTool as ToolDefinition);
+register(ReportGenerateTool as ToolDefinition);
 
 export function getTool(name: string): ToolDefinition | undefined {
   return _registry.get(name);
@@ -45,4 +46,8 @@ export function getToolDefinitions() {
     description: t.description,
     inputSchema: t.inputSchema,
   }));
+}
+
+export function registerTool(tool: ToolDefinition): void {
+  _registry.set(tool.name, tool);
 }
