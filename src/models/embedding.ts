@@ -137,7 +137,7 @@ export async function vectorSearch(query: string, kbId: string, topK = 10, level
     params.push(...levels);
   }
 
-  const rows = db.query(sql).all(...params) as Array<{ page_id: string; vector: string }>;
+  const rows = db.query(sql).all(kbId, ...(levels || [])) as Array<{ page_id: string; vector: string }>;
 
   // Compute cosine similarity for all vectors
   const scored: Array<{ pageId: string; score: number }> = [];
