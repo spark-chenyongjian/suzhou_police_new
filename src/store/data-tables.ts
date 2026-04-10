@@ -85,14 +85,16 @@ export function createSheet(opts: {
   const db = DB.getInstance().raw;
   const id = randomUUID();
   db.query(
-    `INSERT INTO xlsx_sheets (id, doc_id, kb_id, sheet_name, sheet_index, header_row, schema_json, has_header)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO xlsx_sheets (id, doc_id, kb_id, sheet_name, sheet_index, row_count, col_count, header_row, schema_json, has_header)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     opts.docId,
     opts.kbId,
     opts.sheetName,
     opts.sheetIndex,
+    0,
+    opts.headerRow.length,
     JSON.stringify(opts.headerRow),
     JSON.stringify(opts.schemaJson),
     opts.hasHeader !== false ? 1 : 0,

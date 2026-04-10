@@ -101,12 +101,22 @@ export async function parseExcelToStore(opts: ExcelParseOptions): Promise<ExcelP
   deleteSheetsByDoc(docId);
 
   onProgress?.(`读取 Excel 文件: ${filename}`);
-  const workbook = XLSX.readFile(filePath, {
-    type: "file",
-    cellDates: true,  // Parse dates as Date objects
-    cellNF: true,     // Keep number formats
-    cellStyles: false, // Don't need styles
-  });
+
+  // CSV files: read as UTF-8 string first to preserve Chinese encoding
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  let workbook: XLSX.WorkBook;
+  if (ext === "csv") {
+    const { readFileSync } = await import("fs");
+    const csvContent = readFileSync(filePath, "utf-8");
+    workbook = XLSX.read(csvContent, { type: "string", cellDates: true, cellNF: true });
+  } else {
+    workbook = XLSX.readFile(filePath, {
+      type: "file",
+      cellDates: true,
+      cellNF: true,
+      cellStyles: false,
+    });
+  }
 
   const result: ExcelParseResult = { sheets: [], totalRows: 0 };
 
