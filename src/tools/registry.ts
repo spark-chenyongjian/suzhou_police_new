@@ -17,6 +17,12 @@ import { TimelineBuildTool } from "./TimelineBuildTool/index.js";
 import { GraphBuildTool } from "./GraphBuildTool/index.js";
 import { XlsxAnalyzeTool } from "./XlsxAnalyzeTool/index.js";
 import { VlmAnalyzeTool } from "./VlmAnalyzeTool/index.js";
+import { ReadTool } from "./ReadTool/index.js";
+import { GrepTool } from "./GrepTool/index.js";
+import { GlobTool } from "./GlobTool/index.js";
+import { WebSearchTool } from "./WebSearchTool/index.js";
+import { WebFetchTool } from "./WebFetchTool/index.js";
+import { AgentTool } from "./AgentTool/index.js";
 
 export interface ToolDefinition {
   name: string;
@@ -45,6 +51,12 @@ register(TimelineBuildTool as ToolDefinition);
 register(GraphBuildTool as ToolDefinition);
 register(XlsxAnalyzeTool as ToolDefinition);
 register(VlmAnalyzeTool as ToolDefinition);
+register(ReadTool as ToolDefinition);
+register(GrepTool as ToolDefinition);
+register(GlobTool as ToolDefinition);
+register(WebSearchTool as ToolDefinition);
+register(WebFetchTool as ToolDefinition);
+register(AgentTool as ToolDefinition);
 
 export function getTool(name: string): ToolDefinition | undefined {
   return _registry.get(name);
