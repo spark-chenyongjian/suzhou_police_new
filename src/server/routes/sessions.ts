@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createSession, listSessions, getSession, updateSession } from "../../store/sessions.js";
+import { createSession, listSessions, getSession, updateSession, deleteSession } from "../../store/sessions.js";
 import { getMessages } from "../../store/messages.js";
 
 export const sessionRoutes = new Hono();
@@ -20,6 +20,11 @@ sessionRoutes.get("/:id", (c) => {
 sessionRoutes.patch("/:id", async (c) => {
   const { title } = await c.req.json<{ title: string }>();
   updateSession(c.req.param("id"), title);
+  return c.json({ ok: true });
+});
+
+sessionRoutes.delete("/:id", (c) => {
+  deleteSession(c.req.param("id"));
   return c.json({ ok: true });
 });
 

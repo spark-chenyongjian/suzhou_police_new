@@ -1,101 +1,31 @@
 import { useState } from "react";
-import {
-  BrainCircuitIcon,
-  MessageSquareIcon,
-  DatabaseIcon,
-  SettingsIcon,
-  FileTextIcon,
-} from "lucide-react";
-import { Sidebar } from "./components/Sidebar";
-import { ChatWindow } from "./components/ChatWindow";
+import { AppSidebar } from "./components/AppSidebar";
+import { ChatPage } from "./pages/ChatPage";
 import { KnowledgeBasePage } from "./pages/KnowledgeBasePage";
+import { ReportsPage } from "./pages/ReportsPage";
+import { TasksPage } from "./pages/TasksPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
-type Tab = "chat" | "kb" | "settings";
+export type NavPage = "chat" | "kb" | "reports" | "tasks" | "settings";
 
-export function App() {
-  const [activeTab, setActiveTab] = useState<Tab>("chat");
-
-  return (
-    <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
-      {/* Top nav */}
-      <div className="h-10 bg-gray-900 border-b border-gray-800 flex items-center px-4 gap-2 shrink-0">
-        {/* Logo */}
-        <div className="flex items-center gap-2 pr-4 border-r border-gray-800">
-          <BrainCircuitIcon size={16} className="text-blue-400" />
-          <span className="text-sm font-semibold text-white tracking-tight">DeepAnalyze</span>
-        </div>
-
-        {/* Nav tabs */}
-        <TabButton
-          active={activeTab === "chat"}
-          onClick={() => setActiveTab("chat")}
-          icon={<MessageSquareIcon size={13} />}
-          label="对话"
-        />
-        <TabButton
-          active={activeTab === "kb"}
-          onClick={() => setActiveTab("kb")}
-          icon={<DatabaseIcon size={13} />}
-          label="知识库"
-        />
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Settings */}
-        <button
-          onClick={() => setActiveTab("settings")}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors ${
-            activeTab === "settings"
-              ? "text-blue-300 bg-blue-600/20"
-              : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-          }`}
-        >
-          <SettingsIcon size={13} />
-          设置
-        </button>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {activeTab === "chat" ? (
-          <>
-            <Sidebar />
-            <ChatWindow />
-          </>
-        ) : activeTab === "kb" ? (
-          <KnowledgeBasePage />
-        ) : (
-          <SettingsPage />
-        )}
-      </div>
-    </div>
-  );
+export interface NavState {
+  page: NavPage;
+  kbId: string | null;
 }
 
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
+export function App() {
+  const [nav, setNav] = useState<NavState>({ page: "chat", kbId: null });
+
   return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs transition-colors ${
-        active
-          ? "bg-blue-600/20 text-blue-300 border border-blue-600/30"
-          : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
+    <div className="h-screen flex bg-slate-950 text-white overflow-hidden">
+      <AppSidebar nav={nav} onNavigate={setNav} />
+      <main className="flex-1 flex overflow-hidden bg-gray-50 text-gray-900">
+        {nav.page === "chat" && <ChatPage kbId={nav.kbId} />}
+        {nav.page === "kb" && <KnowledgeBasePage kbId={nav.kbId} onKbChange={(id) => setNav({ page: "kb", kbId: id })} />}
+        {nav.page === "reports" && <ReportsPage kbId={nav.kbId} />}
+        {nav.page === "tasks" && <TasksPage kbId={nav.kbId} />}
+        {nav.page === "settings" && <SettingsPage />}
+      </main>
+    </div>
   );
 }

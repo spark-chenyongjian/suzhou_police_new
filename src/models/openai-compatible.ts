@@ -136,7 +136,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
 
   private *parseStreamChunk(data: Record<string, unknown>): Generator<StreamChunk> {
     const choices = data.choices as Array<{
-      delta?: { content?: string; tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }> };
+      delta?: { content?: string; tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }> };
       finish_reason?: string | null;
     }>;
     const delta = choices?.[0]?.delta;
@@ -147,6 +147,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
         yield {
           type: "tool_call_delta",
           toolCall: {
+            index: tc.index,
             id: tc.id,
             function: { name: tc.function?.name || "", arguments: tc.function?.arguments || "" },
           },

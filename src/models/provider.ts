@@ -41,7 +41,7 @@ export interface ChatResponse {
 export interface StreamChunk {
   type: "text" | "tool_call" | "tool_call_delta" | "done" | "error";
   content?: string;
-  toolCall?: Partial<ToolCall>;
+  toolCall?: Partial<ToolCall> & { index?: number };
   finishReason?: string;
   error?: string;
 }

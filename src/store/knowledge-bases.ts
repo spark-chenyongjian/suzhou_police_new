@@ -62,6 +62,26 @@ export function getKnowledgeBase(id: string): KnowledgeBase | null {
   return row ? rowToKb(row as Record<string, unknown>) : null;
 }
 
+export function updateKnowledgeBase(id: string, opts: { name?: string; description?: string }): KnowledgeBase | null {
+  const db = DB.getInstance().raw;
+  if (opts.name !== undefined) {
+    db.query("UPDATE knowledge_bases SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(opts.name, id);
+  }
+  if (opts.description !== undefined) {
+    db.query("UPDATE knowledge_bases SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(opts.description, id);
+  }
+  return getKnowledgeBase(id);
+}
+
+export function deleteKnowledgeBase(id: string): void {
+  const db = DB.getInstance().raw;
+  db.query("DELETE FROM documents WHERE kb_id = ?").run(id);
+  db.query("DELETE FROM wiki_pages WHERE kb_id = ?").run(id);
+  db.query("DELETE FROM knowledge_bases WHERE id = ?").run(id);
+}
+
 // ── Document CRUD ─────────────────────────────────────────────────────────
 
 export function createDocument(opts: {
@@ -108,4 +128,10 @@ export function getDocument(id: string): Document | null {
   const db = DB.getInstance().raw;
   const row = db.query("SELECT * FROM documents WHERE id = ?").get(id);
   return row ? rowToDoc(row as Record<string, unknown>) : null;
+}
+
+export function deleteDocument(id: string): void {
+  const db = DB.getInstance().raw;
+  db.query("DELETE FROM wiki_pages WHERE doc_id = ?").run(id);
+  db.query("DELETE FROM documents WHERE id = ?").run(id);
 }

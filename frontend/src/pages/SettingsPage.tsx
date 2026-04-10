@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
-import { SettingsIcon, SaveIcon, ServerIcon, DatabaseIcon, PuzzleIcon, Loader2Icon, CheckCircle2Icon } from "lucide-react";
+import {
+  SaveIcon,
+  ServerIcon,
+  BrainCircuitIcon,
+  PuzzleIcon,
+  Loader2Icon,
+  CheckCircle2Icon,
+  AlertCircleIcon,
+  HardDriveIcon,
+  CircleCheckBigIcon,
+} from "lucide-react";
 
 interface ModelConfig {
   endpoint: string;
@@ -16,144 +26,228 @@ export function SettingsPage() {
   });
   const [health, setHealth] = useState<{ status: string; timestamp: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saveResult, setSaveResult] = useState<"ok" | "error" | null>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
       .then(setHealth)
       .catch(() => {});
+
+    fetch("/api/settings/model")
+      .then((r) => r.json())
+      .then((cfg: ModelConfig) => {
+        if (cfg.endpoint) setMainModel(cfg);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingConfig(false));
   }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
-    // In a real implementation, this would POST to /api/settings
-    await new Promise((r) => setTimeout(r, 500));
-    setIsSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveResult(null);
+    try {
+      const resp = await fetch("/api/settings/model", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mainModel),
+      });
+      setSaveResult(resp.ok ? "ok" : "error");
+    } catch {
+      setSaveResult("error");
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveResult(null), 3000);
+    }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-2 mb-6">
-          <SettingsIcon size={20} className="text-gray-400" />
-          <h1 className="text-lg font-semibold text-white">系统设置</h1>
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+      {/* Header */}
+      <div className="h-14 border-b border-gray-200 bg-white flex items-center px-6 shrink-0">
+        <h1 className="text-base font-semibold text-gray-900">系统设置</h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto py-8 px-6 space-y-5">
+
+          {/* System Status */}
+          <Section
+            icon={<ServerIcon size={17} className="text-emerald-500" />}
+            title="系统状态"
+            badge={health ? (
+              <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                运行中
+              </span>
+            ) : null}
+          >
+            {health ? (
+              <div className="grid grid-cols-3 gap-4">
+                <Stat label="版本" value="0.1.0" />
+                <Stat label="状态" value={health.status} />
+                <Stat label="最后更新" value={new Date(health.timestamp).toLocaleTimeString("zh-CN")} />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Loader2Icon size={14} className="animate-spin" />
+                连接中...
+              </div>
+            )}
+          </Section>
+
+          {/* Model Config */}
+          <Section
+            icon={<BrainCircuitIcon size={17} className="text-blue-500" />}
+            title="大模型配置"
+            hint="保存后立即生效，无需重启"
+          >
+            {isLoadingConfig ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                <Loader2Icon size={14} className="animate-spin" />
+                加载配置...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <Field
+                  label="API 端点"
+                  value={mainModel.endpoint}
+                  onChange={(v) => setMainModel((m) => ({ ...m, endpoint: v }))}
+                  placeholder="https://api.openai.com/v1"
+                  hint="支持 OpenAI、DashScope、Ollama 等兼容接口"
+                />
+                <Field
+                  label="模型名称"
+                  value={mainModel.model}
+                  onChange={(v) => setMainModel((m) => ({ ...m, model: v }))}
+                  placeholder="gpt-4o"
+                />
+                <Field
+                  label="API Key"
+                  value={mainModel.apiKey || ""}
+                  onChange={(v) => setMainModel((m) => ({ ...m, apiKey: v }))}
+                  placeholder="sk-..."
+                  type="password"
+                />
+                <Field
+                  label="最大 Token 数"
+                  value={String(mainModel.maxTokens || 32768)}
+                  onChange={(v) => setMainModel((m) => ({ ...m, maxTokens: parseInt(v) || 32768 }))}
+                  placeholder="32768"
+                />
+
+                <div className="pt-1">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                      saveResult === "ok"
+                        ? "bg-emerald-500 text-white"
+                        : saveResult === "error"
+                        ? "bg-red-500 text-white"
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                    } disabled:opacity-60`}
+                  >
+                    {isSaving ? (
+                      <Loader2Icon size={15} className="animate-spin" />
+                    ) : saveResult === "ok" ? (
+                      <CheckCircle2Icon size={15} />
+                    ) : saveResult === "error" ? (
+                      <AlertCircleIcon size={15} />
+                    ) : (
+                      <SaveIcon size={15} />
+                    )}
+                    {saveResult === "ok" ? "已保存" : saveResult === "error" ? "保存失败" : "保存配置"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Section>
+
+          {/* Plugins */}
+          <Section
+            icon={<PuzzleIcon size={17} className="text-violet-500" />}
+            title="已加载插件"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                <CircleCheckBigIcon size={15} className="text-emerald-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800">judicial-evidence</p>
+                  <p className="text-xs text-gray-500">司法证据分析插件</p>
+                </div>
+                <span className="text-xs text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-full">v1.0</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                在 <code className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">plugins/</code> 目录添加{" "}
+                <code className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">plugin.yaml</code> 即可扩展场景
+              </p>
+            </div>
+          </Section>
+
+          {/* Data Storage */}
+          <Section
+            icon={<HardDriveIcon size={17} className="text-amber-500" />}
+            title="数据存储"
+          >
+            <div className="space-y-2">
+              <StorageRow label="数据库" path="data/deepanalyze.db" />
+              <StorageRow label="Wiki 文件" path="data/wiki/" />
+              <StorageRow label="原始文档" path="data/wiki/{kbId}/originals/" />
+              <StorageRow label="分析报告" path="data/wiki/{kbId}/reports/" />
+            </div>
+          </Section>
+
         </div>
-
-        {/* System Status */}
-        <Card title="系统状态" icon={<ServerIcon size={16} className="text-green-400" />}>
-          {health ? (
-            <div className="space-y-1 text-sm">
-              <Row label="状态" value={<span className="text-green-400">{health.status}</span>} />
-              <Row label="版本" value="0.1.0" />
-              <Row label="最后更新" value={new Date(health.timestamp).toLocaleString("zh-CN")} />
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">加载中...</p>
-          )}
-        </Card>
-
-        {/* Model Config */}
-        <Card title="模型配置" icon={<DatabaseIcon size={16} className="text-blue-400" />}>
-          <div className="space-y-3">
-            <FormField
-              label="API 端点"
-              value={mainModel.endpoint}
-              onChange={(v) => setMainModel((m) => ({ ...m, endpoint: v }))}
-              placeholder="http://localhost:11434/v1"
-              hint="支持 Ollama、vLLM、LM Studio 或任何 OpenAI 兼容服务"
-            />
-            <FormField
-              label="模型名称"
-              value={mainModel.model}
-              onChange={(v) => setMainModel((m) => ({ ...m, model: v }))}
-              placeholder="deepseek-r1:7b"
-            />
-            <FormField
-              label="API Key"
-              value={mainModel.apiKey || ""}
-              onChange={(v) => setMainModel((m) => ({ ...m, apiKey: v }))}
-              placeholder="（本地模型可留空）"
-              type="password"
-            />
-            <FormField
-              label="最大 Token 数"
-              value={String(mainModel.maxTokens || 32768)}
-              onChange={(v) => setMainModel((m) => ({ ...m, maxTokens: parseInt(v) || 32768 }))}
-              placeholder="32768"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              修改后需要重启服务或编辑 <code className="bg-gray-800 px-1 rounded">config/model-config.yaml</code>
-            </p>
-          </div>
-        </Card>
-
-        {/* Plugin Status */}
-        <Card title="已加载 Plugin/Skill" icon={<PuzzleIcon size={16} className="text-purple-400" />}>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-lg">
-              <CheckCircle2Icon size={13} className="text-green-400" />
-              <span className="text-gray-300">judicial-evidence</span>
-              <span className="text-xs text-gray-500 ml-auto">v1.0 · 司法证据分析</span>
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              在 <code className="bg-gray-800 px-1 rounded">plugins/</code> 目录添加 plugin.yaml 文件即可扩展场景
-            </p>
-          </div>
-        </Card>
-
-        {/* Data Dir Info */}
-        <Card title="数据存储" icon={<DatabaseIcon size={16} className="text-yellow-400" />}>
-          <div className="space-y-1 text-sm">
-            <Row label="数据库" value="data/deepanalyze.db" />
-            <Row label="Wiki 文件" value="data/wiki/" />
-            <Row label="报告" value="data/wiki/{kbId}/reports/" />
-          </div>
-        </Card>
-
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-lg text-sm text-white transition-colors"
-        >
-          {isSaving ? (
-            <Loader2Icon size={15} className="animate-spin" />
-          ) : saved ? (
-            <CheckCircle2Icon size={15} />
-          ) : (
-            <SaveIcon size={15} />
-          )}
-          {saved ? "已保存" : "保存设置"}
-        </button>
       </div>
     </div>
   );
 }
 
-function Card({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({
+  icon,
+  title,
+  hint,
+  badge,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint?: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100">
         {icon}
-        <h2 className="text-sm font-semibold text-gray-200">{title}</h2>
+        <h2 className="text-sm font-semibold text-gray-800 flex-1">{title}</h2>
+        {hint && <span className="text-xs text-gray-400">{hint}</span>}
+        {badge}
       </div>
-      {children}
+      <div className="px-5 py-4">{children}</div>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-center py-1">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-gray-300 font-mono text-xs">{value}</span>
+    <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-sm font-medium text-gray-800">{value}</p>
     </div>
   );
 }
 
-function FormField({ label, value, onChange, placeholder, type = "text", hint }: {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  hint,
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -163,15 +257,24 @@ function FormField({ label, value, onChange, placeholder, type = "text", hint }:
 }) {
   return (
     <div>
-      <label className="block text-xs text-gray-400 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-blue-500 transition-colors"
+        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-300 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
       />
-      {hint && <p className="text-xs text-gray-600 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+function StorageRow({ label, path }: { label: string; path: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-sm text-gray-500">{label}</span>
+      <code className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2 py-1 rounded">{path}</code>
     </div>
   );
 }

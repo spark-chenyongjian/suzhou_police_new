@@ -1,26 +1,64 @@
-import { useState, useEffect } from "react";
-import { DatabaseIcon, PlusIcon, FileTextIcon, UploadIcon, Loader2Icon, CheckCircle2Icon, AlertCircleIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  DatabaseIcon, PlusIcon, FileTextIcon, UploadIcon, Loader2Icon,
+  CheckCircle2Icon, AlertCircleIcon, PencilIcon, Trash2Icon, MoreHorizontalIcon,
+  RefreshCwIcon, BookOpenIcon, XIcon,
+} from "lucide-react";
 import { api, type KbInfo, type DocInfo } from "../api/client";
-import { useChatStore } from "../store/chat";
 
-export function KnowledgeBasePage() {
+interface Props {
+  kbId?: string | null;
+  onKbChange?: (id: string) => void;
+}
+
+type WikiPageInfo = {
+  id: string; title: string; pageType: string; docId: string | null; tokenCount: number | null; createdAt: string;
+};
+
+export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
   const [kbs, setKbs] = useState<KbInfo[]>([]);
   const [selectedKb, setSelectedKb] = useState<KbInfo | null>(null);
   const [docs, setDocs] = useState<DocInfo[]>([]);
   const [newKbName, setNewKbName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const { setCurrentKb } = useChatStore();
+  const [activeTab, setActiveTab] = useState<"docs" | "wiki">("docs");
+  const [renamingKbId, setRenamingKbId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [showMenuId, setShowMenuId] = useState<string | null>(null);
+  const [showNewKbInput, setShowNewKbInput] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.listKbs().then(setKbs).catch(console.error);
+    api.listKbs().then((list) => {
+      setKbs(list);
+      if (initialKbId) {
+        const match = list.find((k) => k.id === initialKbId);
+        if (match) setSelectedKb(match);
+      }
+    }).catch(console.error);
+  }, [initialKbId]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   useEffect(() => {
     if (!selectedKb) { setDocs([]); return; }
     api.listDocuments(selectedKb.id).then(setDocs).catch(console.error);
-    const interval = setInterval(() => {
-      api.listDocuments(selectedKb.id).then(setDocs).catch(() => {});
+    const interval = setInterval(async () => {
+      const d = await api.listDocuments(selectedKb.id).catch(() => null);
+      if (!d) return;
+      setDocs(d);
+      if (d.every((doc) => doc.status === "ready" || doc.status === "error")) {
+        clearInterval(interval);
+      }
     }, 3000);
     return () => clearInterval(interval);
   }, [selectedKb]);
@@ -32,10 +70,28 @@ export function KnowledgeBasePage() {
       const kb = await api.createKb(newKbName.trim());
       setKbs((p) => [kb, ...p]);
       setNewKbName("");
+      setShowNewKbInput(false);
       setSelectedKb(kb);
+      onKbChange?.(kb.id);
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleRename = async (kbId: string) => {
+    if (!renameValue.trim()) return;
+    const updated = await api.renameKb(kbId, renameValue.trim());
+    setKbs((p) => p.map((k) => (k.id === kbId ? updated : k)));
+    if (selectedKb?.id === kbId) setSelectedKb(updated);
+    setRenamingKbId(null);
+  };
+
+  const handleDeleteKb = async (kbId: string) => {
+    if (!confirm("确定删除此知识库？所有文档和Wiki页面将被清除。")) return;
+    await api.deleteKb(kbId);
+    setKbs((p) => p.filter((k) => k.id !== kbId));
+    if (selectedKb?.id === kbId) setSelectedKb(null);
+    setShowMenuId(null);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,124 +109,401 @@ export function KnowledgeBasePage() {
     }
   };
 
+  const handleDeleteDoc = async (doc: DocInfo) => {
+    if (!selectedKb || !confirm(`确定删除文档「${doc.filename}」？`)) return;
+    await api.deleteDocument(selectedKb.id, doc.id);
+    setDocs((p) => p.filter((d) => d.id !== doc.id));
+  };
+
+  const handleRetry = async (doc: DocInfo) => {
+    if (!selectedKb) return;
+    await api.retryDocument(selectedKb.id, doc.id);
+    const updated = await api.listDocuments(selectedKb.id);
+    setDocs(updated);
+  };
+
   const statusIcon = (status: string) => {
-    if (status === "ready") return <CheckCircle2Icon size={14} className="text-green-400" />;
-    if (status === "error") return <AlertCircleIcon size={14} className="text-red-400" />;
-    return <Loader2Icon size={14} className="animate-spin text-yellow-400" />;
+    if (status === "ready") return <CheckCircle2Icon size={14} className="text-green-500" />;
+    if (status === "error") return <AlertCircleIcon size={14} className="text-red-500" />;
+    return <Loader2Icon size={14} className="animate-spin text-amber-500" />;
   };
 
   const statusLabel: Record<string, string> = {
-    uploaded: "等待处理",
-    parsing: "解析中...",
-    compiling: "编译中...",
-    ready: "就绪",
-    error: "错误",
+    uploaded: "等待处理", parsing: "解析中", compiling: "编译中", ready: "就绪", error: "错误",
   };
+
+  const wikiPageCount = docs.filter((d) => d.status === "ready").length * 3;
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* KB list */}
-      <div className="w-64 border-r border-gray-800 flex flex-col bg-gray-900">
-        <div className="p-3 border-b border-gray-800">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">知识库</p>
-          <div className="flex gap-1">
+      {/* KB list sidebar */}
+      <div className="w-56 border-r border-gray-200 bg-white flex flex-col shrink-0">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">知识库</span>
+          <button
+            onClick={() => setShowNewKbInput((v) => !v)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+          >
+            <PlusIcon size={13} />
+            新建
+          </button>
+        </div>
+
+        {showNewKbInput && (
+          <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex gap-2">
             <input
+              autoFocus
               value={newKbName}
               onChange={(e) => setNewKbName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreateKb()}
-              placeholder="新建知识库..."
-              className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-gray-200 placeholder-gray-500 outline-none focus:border-blue-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateKb();
+                if (e.key === "Escape") { setShowNewKbInput(false); setNewKbName(""); }
+              }}
+              placeholder="知识库名称..."
+              className="flex-1 text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 text-gray-800"
             />
             <button
               onClick={handleCreateKb}
               disabled={isCreating || !newKbName.trim()}
-              className="px-2 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded text-white"
+              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg text-white text-xs font-medium"
             >
-              {isCreating ? <Loader2Icon size={12} className="animate-spin" /> : <PlusIcon size={12} />}
+              {isCreating ? "..." : "创建"}
             </button>
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        )}
+
+        <div className="flex-1 overflow-y-auto py-1">
           {kbs.map((kb) => (
-            <button
-              key={kb.id}
-              onClick={() => { setSelectedKb(kb); setCurrentKb(kb.id); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                selectedKb?.id === kb.id
-                  ? "bg-blue-600/20 text-blue-300 border border-blue-600/30"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-              }`}
-            >
-              <DatabaseIcon size={14} className="shrink-0" />
-              <span className="truncate">{kb.name}</span>
-            </button>
+            <div key={kb.id} className="relative">
+              {renamingKbId === kb.id ? (
+                <div className="flex items-center gap-1 px-3 py-2">
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRename(kb.id);
+                      if (e.key === "Escape") setRenamingKbId(null);
+                    }}
+                    className="flex-1 text-sm border border-blue-400 rounded px-2 py-1 outline-none text-gray-800"
+                  />
+                  <button onClick={() => handleRename(kb.id)} className="text-blue-600 hover:text-blue-700">
+                    <CheckCircle2Icon size={14} />
+                  </button>
+                  <button onClick={() => setRenamingKbId(null)} className="text-gray-400 hover:text-gray-600">
+                    <XIcon size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setSelectedKb(kb); onKbChange?.(kb.id); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors group ${
+                    selectedKb?.id === kb.id
+                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <DatabaseIcon size={14} className={`shrink-0 ${selectedKb?.id === kb.id ? "text-blue-500" : "text-gray-400"}`} />
+                  <span className="truncate flex-1 font-medium">{kb.name}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowMenuId(kb.id); }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-opacity"
+                  >
+                    <MoreHorizontalIcon size={14} />
+                  </button>
+                </button>
+              )}
+              {showMenuId === kb.id && (
+                <div ref={menuRef} className="absolute right-2 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-32">
+                  <button
+                    onClick={() => { setRenamingKbId(kb.id); setRenameValue(kb.name); setShowMenuId(null); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <PencilIcon size={13} />重命名
+                  </button>
+                  <button
+                    onClick={() => handleDeleteKb(kb.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2Icon size={13} />删除
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
-          {kbs.length === 0 && (
-            <p className="text-xs text-gray-600 text-center py-6">暂无知识库</p>
+          {kbs.length === 0 && !showNewKbInput && (
+            <div className="text-center py-10">
+              <DatabaseIcon size={28} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-xs text-gray-400">点击"新建"创建知识库</p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Document list */}
+      {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {!selectedKb ? (
-          <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">
+          <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <DatabaseIcon size={36} className="mx-auto mb-2 text-gray-700" />
-              <p>选择或创建一个知识库</p>
+              <DatabaseIcon size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500 text-sm font-medium">选择或创建一个知识库</p>
             </div>
           </div>
         ) : (
           <>
-            {/* Header */}
-            <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-white text-sm">{selectedKb.name}</h2>
-                <p className="text-xs text-gray-500">{docs.length} 个文档</p>
+                <h2 className="text-base font-semibold text-gray-900">{selectedKb.name}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {docs.length} 个文档 · {docs.filter((d) => d.status === "ready").length} 个就绪
+                  {wikiPageCount > 0 && ` · ${wikiPageCount} 个Wiki页面`}
+                </p>
               </div>
-              <label className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg cursor-pointer transition-colors ${
-                isUploading ? "bg-gray-700 text-gray-400" : "bg-blue-600 hover:bg-blue-500 text-white"
+              <label className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg cursor-pointer transition-colors ${
+                isUploading ? "bg-gray-100 text-gray-400" : "bg-blue-600 hover:bg-blue-700 text-white"
               }`}>
-                {isUploading ? <Loader2Icon size={13} className="animate-spin" /> : <UploadIcon size={13} />}
+                {isUploading ? <Loader2Icon size={14} className="animate-spin" /> : <UploadIcon size={14} />}
                 上传文档
                 <input type="file" className="hidden" multiple onChange={handleUpload} disabled={isUploading}
                   accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.xlsx,.csv" />
               </label>
             </div>
 
-            {/* Document list */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {docs.length === 0 ? (
-                <div className="text-center py-16 text-gray-600">
-                  <FileTextIcon size={36} className="mx-auto mb-2 text-gray-700" />
-                  <p className="text-sm">暂无文档，点击"上传文档"开始</p>
-                  <p className="text-xs mt-1">支持 PDF、Word、PPT、Markdown、Excel 等格式</p>
-                </div>
+            <div className="px-6 border-b border-gray-200 bg-white flex gap-6">
+              {[
+                { key: "docs" as const, label: "文档管理", icon: <FileTextIcon size={13} /> },
+                { key: "wiki" as const, label: "Wiki浏览", icon: <BookOpenIcon size={13} /> },
+              ].map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`flex items-center gap-1.5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                    activeTab === key
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {icon}{label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              {activeTab === "docs" ? (
+                docs.length === 0 ? (
+                  <div className="text-center py-16">
+                    <FileTextIcon size={40} className="mx-auto text-gray-300 mb-3" />
+                    <p className="text-gray-500 text-sm">暂无文档，点击"上传文档"开始</p>
+                    <p className="text-xs text-gray-400 mt-1">支持 PDF、Word、PPT、Markdown、Excel 等格式</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {docs.map((doc) => (
+                      <div key={doc.id} className="bg-white border border-gray-200 rounded-xl px-5 py-3.5 flex items-center gap-4 hover:border-gray-300 transition-colors group">
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                          <FileTextIcon size={17} className="text-blue-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{doc.filename}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
+                            {" · "}
+                            {new Date(doc.createdAt.replace(" ", "T") + "Z").toLocaleString("zh-CN")}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            {statusIcon(doc.status)}
+                            <span className={
+                              doc.status === "ready" ? "text-green-600" :
+                              doc.status === "error" ? "text-red-600" : "text-amber-600"
+                            }>{statusLabel[doc.status] || doc.status}</span>
+                          </div>
+                          {doc.status === "error" && (
+                            <button
+                              onClick={() => handleRetry(doc)}
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50"
+                            >
+                              <RefreshCwIcon size={11} />重试
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteDoc(doc)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
+                          >
+                            <Trash2Icon size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="space-y-2">
-                  {docs.map((doc) => (
-                    <div key={doc.id} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-3">
-                      <FileTextIcon size={16} className="text-gray-400 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 truncate">{doc.filename}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
-                          {" · "}
-                          {new Date(doc.createdAt.replace(" ", "T") + "Z").toLocaleString("zh-CN")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs shrink-0">
-                        {statusIcon(doc.status)}
-                        <span className={doc.status === "ready" ? "text-green-400" : doc.status === "error" ? "text-red-400" : "text-yellow-400"}>
-                          {statusLabel[doc.status] || doc.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <WikiBrowser kbId={selectedKb.id} />
               )}
             </div>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WikiBrowser({ kbId }: { kbId: string }) {
+  const [pages, setPages] = useState<WikiPageInfo[]>([]);
+  const [filter, setFilter] = useState<"all" | "abstract" | "overview" | "fulltext">("all");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [content, setContent] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/kb/${kbId}/wiki/pages`)
+      .then((r) => r.json())
+      .then(setPages)
+      .catch(() => {});
+  }, [kbId]);
+
+  const loadPage = async (pageId: string) => {
+    setSelected(pageId);
+    setLoading(true);
+    try {
+      const resp = await fetch(`/api/kb/${kbId}/wiki/pages/${pageId}/content`);
+      setContent(await resp.text());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const typeFilter: Record<string, string> = {
+    all: "全部", abstract: "L0", overview: "L1", fulltext: "L2",
+  };
+
+  const badge = (pageType: string) => {
+    switch (pageType) {
+      case "abstract": return { label: "L0 摘要", cls: "bg-green-100 text-green-700" };
+      case "overview": return { label: "L1 概览", cls: "bg-blue-100 text-blue-700" };
+      case "fulltext": return { label: "L2 全文", cls: "bg-purple-100 text-purple-700" };
+      case "entity":  return { label: "实体", cls: "bg-amber-100 text-amber-700" };
+      case "report":  return { label: "报告", cls: "bg-emerald-100 text-emerald-700" };
+      default: return { label: pageType, cls: "bg-gray-100 text-gray-600" };
+    }
+  };
+
+  // Group by docId
+  const filteredPages = filter === "all" ? pages : pages.filter((p) => p.pageType === filter);
+  const docGroups: Record<string, WikiPageInfo[]> = {};
+  const ungrouped: WikiPageInfo[] = [];
+  for (const p of filteredPages) {
+    if (p.docId) {
+      if (!docGroups[p.docId]) docGroups[p.docId] = [];
+      docGroups[p.docId].push(p);
+    } else {
+      ungrouped.push(p);
+    }
+  }
+
+  if (pages.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <BookOpenIcon size={40} className="mx-auto text-gray-300 mb-3" />
+        <p className="text-gray-500 text-sm">暂无Wiki页面，请先上传并编译文档</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-4" style={{ minHeight: 0 }}>
+      {/* Left: page list */}
+      <div className="w-72 shrink-0 flex flex-col">
+        {/* Filter tabs */}
+        <div className="flex gap-1 mb-3">
+          {(["all", "abstract", "overview", "fulltext"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filter === f
+                  ? "bg-blue-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              {typeFilter[f]}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-3 overflow-y-auto">
+          {Object.entries(docGroups).map(([docId, docPages]) => {
+            const firstName = docPages[0]?.title.replace(/^\[L[012]\] /, "") ?? docId.slice(0, 8);
+            return (
+              <div key={docId}>
+                <p className="text-xs font-medium text-gray-500 mb-1.5 truncate" title={firstName}>{firstName}</p>
+                <div className="space-y-1">
+                  {docPages.map((p) => {
+                    const b = badge(p.pageType);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => loadPage(p.id)}
+                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                          selected === p.id
+                            ? "bg-blue-50 border border-blue-200"
+                            : "bg-white border border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 mt-0.5 ${b.cls}`}>
+                          {b.label}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-gray-800 truncate">
+                            {p.title.replace(/^\[L[012]\] /, "")}
+                          </p>
+                          {p.tokenCount && (
+                            <p className="text-xs text-gray-400 mt-0.5">~{p.tokenCount.toLocaleString()} tokens</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {ungrouped.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1.5">其他</p>
+              <div className="space-y-1">
+                {ungrouped.map((p) => {
+                  const b = badge(p.pageType);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => loadPage(p.id)}
+                      className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                        selected === p.id ? "bg-blue-50 border border-blue-200" : "bg-white border border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 mt-0.5 ${b.cls}`}>{b.label}</span>
+                      <p className="text-xs font-medium text-gray-800 truncate">{p.title}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right: content */}
+      <div className="flex-1 bg-white border border-gray-200 rounded-xl p-6 overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center gap-2 text-gray-400 text-sm py-8 justify-center">
+            <Loader2Icon size={16} className="animate-spin" />加载中...
+          </div>
+        ) : content ? (
+          <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{content}</pre>
+        ) : (
+          <p className="text-gray-400 text-sm text-center py-8">选择左侧Wiki页面查看内容</p>
         )}
       </div>
     </div>

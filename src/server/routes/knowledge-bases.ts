@@ -6,14 +6,21 @@ import {
   createKnowledgeBase,
   listKnowledgeBases,
   getKnowledgeBase,
+  updateKnowledgeBase,
+  deleteKnowledgeBase,
   createDocument,
   updateDocumentStatus,
   listDocuments,
   getDocument,
+  deleteDocument,
 } from "../../store/knowledge-bases.js";
 import { compileDocument } from "../../wiki/compiler.js";
 import { indexPageInFts } from "../../wiki/search.js";
-import { getWikiPage, getWikiPageContent, listWikiPagesByDoc } from "../../wiki/page-manager.js";
+import {
+  getWikiPage, getWikiPageContent, listWikiPagesByDoc, listWikiPagesByKb,
+  updateWikiPage, deleteWikiPage,
+} from "../../wiki/page-manager.js";
+import { estimateTokensCJK } from "../../models/provider.js";
 
 const DATA_DIR = join(process.cwd(), "data");
 
@@ -35,6 +42,40 @@ kbRoutes.get("/:kbId", (c) => {
   return c.json(kb);
 });
 
+kbRoutes.patch("/:kbId", async (c) => {
+  const body = await c.req.json<{ name?: string; description?: string }>();
+  const kb = updateKnowledgeBase(c.req.param("kbId"), body);
+  if (!kb) return c.json({ error: "Knowledge base not found" }, 404);
+  return c.json(kb);
+});
+
+kbRoutes.delete("/:kbId", (c) => {
+  const kbId = c.req.param("kbId");
+  if (!getKnowledgeBase(kbId)) return c.json({ error: "Knowledge base not found" }, 404);
+  deleteKnowledgeBase(kbId);
+  return c.json({ ok: true });
+});
+
+// ── Wiki pages list ───────────────────────────────────────────────────────
+
+kbRoutes.get("/:kbId/wiki/pages", (c) => {
+  const pages = listWikiPagesByKb(c.req.param("kbId"));
+  return c.json(pages.map((p) => ({
+    id: p.id,
+    title: p.title,
+    pageType: p.pageType,
+    docId: p.docId,
+    tokenCount: p.tokenCount,
+    createdAt: p.createdAt,
+  })));
+});
+
+kbRoutes.get("/:kbId/wiki/pages/:pageId/content", (c) => {
+  const page = getWikiPage(c.req.param("pageId"));
+  if (!page || page.kbId !== c.req.param("kbId")) return c.json({ error: "Not found" }, 404);
+  return c.text(getWikiPageContent(page));
+});
+
 // ── Documents ─────────────────────────────────────────────────────────────
 
 kbRoutes.get("/:kbId/documents", (c) => {
@@ -45,6 +86,25 @@ kbRoutes.get("/:kbId/documents/:docId", (c) => {
   const doc = getDocument(c.req.param("docId"));
   if (!doc || doc.kbId !== c.req.param("kbId")) return c.json({ error: "Not found" }, 404);
   return c.json(doc);
+});
+
+kbRoutes.delete("/:kbId/documents/:docId", (c) => {
+  const doc = getDocument(c.req.param("docId"));
+  if (!doc || doc.kbId !== c.req.param("kbId")) return c.json({ error: "Not found" }, 404);
+  deleteDocument(doc.id);
+  return c.json({ ok: true });
+});
+
+kbRoutes.post("/:kbId/documents/:docId/retry", async (c) => {
+  const doc = getDocument(c.req.param("docId"));
+  if (!doc || doc.kbId !== c.req.param("kbId")) return c.json({ error: "Not found" }, 404);
+  if (doc.status !== "error") return c.json({ error: "Document is not in error state" }, 400);
+
+  triggerCompilation(doc.id, doc.kbId, doc.filename, doc.filePath || "").catch((err) => {
+    console.error(`[Compile] Retry error for doc ${doc.id}:`, err);
+    updateDocumentStatus(doc.id, "error", { error: String(err) });
+  });
+  return c.json({ ok: true, status: "retrying" });
 });
 
 kbRoutes.get("/:kbId/documents/:docId/pages", (c) => {
@@ -102,6 +162,12 @@ kbRoutes.post("/:kbId/documents/upload", async (c) => {
 });
 
 async function triggerCompilation(docId: string, kbId: string, filename: string, filePath: string): Promise<void> {
+  // Clean up any existing wiki pages for this doc before recompiling (prevents duplicates on retry)
+  const existingPages = listWikiPagesByDoc(docId);
+  for (const page of existingPages) {
+    deleteWikiPage(page.id);
+  }
+
   updateDocumentStatus(docId, "parsing");
 
   let parsedContent: string;
@@ -149,3 +215,45 @@ async function triggerCompilation(docId: string, kbId: string, filename: string,
 
   console.log(`[Compile] Document ${docId} (${filename}) compiled successfully.`);
 }
+
+// ── Reports (Wiki pages of type "report") ─────────────────────────────────
+
+kbRoutes.get("/:kbId/reports", (c) => {
+  const reports = listWikiPagesByKb(c.req.param("kbId"), "report");
+  return c.json(reports.map((p) => ({
+    id: p.id,
+    title: p.title,
+    tokenCount: p.tokenCount,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  })));
+});
+
+kbRoutes.get("/:kbId/reports/:reportId/content", (c) => {
+  const page = getWikiPage(c.req.param("reportId"));
+  if (!page || page.kbId !== c.req.param("kbId") || page.pageType !== "report") {
+    return c.json({ error: "Report not found" }, 404);
+  }
+  return c.text(getWikiPageContent(page));
+});
+
+kbRoutes.put("/:kbId/reports/:reportId", async (c) => {
+  const page = getWikiPage(c.req.param("reportId"));
+  if (!page || page.kbId !== c.req.param("kbId") || page.pageType !== "report") {
+    return c.json({ error: "Report not found" }, 404);
+  }
+  const body = await c.req.json<{ content?: string; title?: string }>();
+  const newContent = body.content ?? getWikiPageContent(page);
+  const tokens = estimateTokensCJK(newContent);
+  updateWikiPage(page.id, newContent, tokens);
+  return c.json({ ok: true });
+});
+
+kbRoutes.delete("/:kbId/reports/:reportId", (c) => {
+  const page = getWikiPage(c.req.param("reportId"));
+  if (!page || page.kbId !== c.req.param("kbId") || page.pageType !== "report") {
+    return c.json({ error: "Report not found" }, 404);
+  }
+  deleteWikiPage(page.id);
+  return c.json({ ok: true });
+});

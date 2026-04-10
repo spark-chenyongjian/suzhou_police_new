@@ -103,6 +103,18 @@ export function getWikiPageContent(page: WikiPage): string {
   return readFileSync(absPath, "utf-8");
 }
 
+export function deleteWikiPage(id: string): void {
+  const db = DB.getInstance().raw;
+  const page = getWikiPage(id);
+  if (!page) return;
+  try {
+    const absPath = join(DATA_DIR, page.filePath);
+    if (existsSync(absPath)) unlinkSync(absPath);
+  } catch { /* ignore fs errors */ }
+  db.query("DELETE FROM wiki_links WHERE source_page_id = ? OR target_page_id = ?").run(id, id);
+  db.query("DELETE FROM wiki_pages WHERE id = ?").run(id);
+}
+
 export function listWikiPagesByDoc(docId: string): WikiPage[] {
   const db = DB.getInstance().raw;
   return (db.query("SELECT * FROM wiki_pages WHERE doc_id = ? ORDER BY page_type").all(docId) as Record<string, unknown>[]).map(rowToPage);

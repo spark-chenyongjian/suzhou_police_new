@@ -36,3 +36,9 @@ export function updateSession(id: string, title: string): void {
   const db = DB.getInstance().raw;
   db.query("UPDATE sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(title, id);
 }
+
+export function deleteSession(id: string): void {
+  const db = DB.getInstance().raw;
+  db.query("DELETE FROM messages WHERE session_id = ?").run(id);
+  db.query("DELETE FROM sessions WHERE id = ?").run(id);
+}

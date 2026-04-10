@@ -5,10 +5,12 @@ import { getModelRouter } from "../../models/router.js";
 import { getToolDefinitions, getTool } from "../../tools/registry.js";
 import { autoApproveAll } from "../../core/permissions.js";
 import type { ChatMessage } from "../../models/provider.js";
+import { listKnowledgeBases } from "../../store/knowledge-bases.js";
 
 export const chatRoutes = new Hono();
 
-const MAX_TOOL_ROUNDS = 20; // TAOR loop limit
+const MAX_TOOL_ROUNDS = 10; // TAOR loop limit
+const MAX_TOOL_RESULT_CHARS = 4000; // Truncate large tool results to prevent context overflow
 
 // Non-streaming send (quick ACK)
 chatRoutes.post("/send", async (c) => {
@@ -64,7 +66,8 @@ chatRoutes.post("/stream", async (c) => {
           while (round < MAX_TOOL_ROUNDS) {
             round++;
             let assistantText = "";
-            const pendingToolCalls: Array<{ id: string; name: string; argsRaw: string }> = [];
+            // Map by index — OpenAI streaming identifies tool calls by index across deltas
+            const pendingByIndex = new Map<number, { id: string; name: string; argsRaw: string }>();
 
             // Stream from model
             for await (const chunk of router.chatStream(msgs, { tools })) {
@@ -74,11 +77,13 @@ chatRoutes.post("/stream", async (c) => {
                 send({ type: "text", content: chunk.content });
               } else if (chunk.type === "tool_call_delta" && chunk.toolCall) {
                 const tc = chunk.toolCall;
-                const existing = pendingToolCalls.find((p) => p.id === tc.id);
+                const idx = tc.index ?? 0;
+                const existing = pendingByIndex.get(idx);
                 if (existing) {
+                  if (!existing.name && tc.function?.name) existing.name = tc.function.name;
                   existing.argsRaw += tc.function?.arguments || "";
                 } else {
-                  pendingToolCalls.push({
+                  pendingByIndex.set(idx, {
                     id: tc.id || crypto.randomUUID(),
                     name: tc.function?.name || "",
                     argsRaw: tc.function?.arguments || "",
@@ -88,6 +93,8 @@ chatRoutes.post("/stream", async (c) => {
                 break;
               }
             }
+
+            const pendingToolCalls = Array.from(pendingByIndex.values()).filter((tc) => tc.name);
 
             // Add assistant turn to history
             msgs.push({ role: "assistant", content: assistantText });
@@ -119,8 +126,13 @@ chatRoutes.post("/stream", async (c) => {
               // Store tool result in conversation
               createMessage(sessionId, "tool", toolResult, { toolName: tc.name, toolCallId: tc.id });
 
+              // Truncate large tool results to prevent context overflow
+              const truncated = toolResult.length > MAX_TOOL_RESULT_CHARS
+                ? toolResult.slice(0, MAX_TOOL_RESULT_CHARS) + `\n...[结果已截断，共 ${toolResult.length} 字符]`
+                : toolResult;
+
               // Add tool result to msg history
-              msgs.push({ role: "user", content: `[Tool: ${tc.name}]\n${toolResult}` });
+              msgs.push({ role: "user", content: `[Tool: ${tc.name}]\n${truncated}` });
 
               send({ type: "tool_result", name: tc.name, resultLength: toolResult.length });
             }
@@ -151,20 +163,31 @@ chatRoutes.post("/stream", async (c) => {
 });
 
 function buildSystemPrompt(kbId?: string): string {
-  const base = `你是 DeepAnalyze 深度分析系统的 AI 助手，具备以下能力：
-- 通过 kb_search 工具在知识库中检索相关文档
-- 通过 expand 工具逐层展开文档细节（L0摘要 → L1概览 → L2全文）
-- 通过 wiki_browse 工具浏览知识库索引和实体页面
-- 通过 docling_parse 工具解析新文档
-
-工作原则：
-1. 所有结论必须基于知识库内容，引用时标注来源文档
-2. 先用 kb_search 搜索，再用 expand 深入细节，避免一次加载过多内容
-3. 对复杂问题，制定检索计划后再执行
-4. 如果检索结果不足，尝试不同关键词或扩展搜索范围`;
-
+  let kbSection: string;
   if (kbId) {
-    return `${base}\n\n当前知识库 ID: ${kbId}\n检索时请使用此 kbId。`;
+    kbSection = `\n\n## 当前知识库\n- **kbId**: \`${kbId}\`（所有工具调用必须使用此 ID）`;
+  } else {
+    const kbs = listKnowledgeBases();
+    if (kbs.length > 0) {
+      const kbList = kbs.map((kb) => `- \`${kb.id}\` — ${kb.name}`).join("\n");
+      kbSection = `\n\n## 可用知识库（未指定当前知识库，请根据用户问题选择合适的 kbId）\n${kbList}`;
+    } else {
+      kbSection = "\n\n## 知识库：暂无知识库，无法检索文档";
+    }
   }
-  return base;
+
+  return `你是 DeepAnalyze 深度分析系统的 AI 助手。${kbSection}
+
+## 可用工具
+- **kb_search**: 全文检索知识库（优先使用，效率最高）
+- **wiki_browse**: 浏览知识库索引/摘要/实体（view=abstracts 可快速了解全局）
+- **expand**: 展开具体页面的详细内容（L0→L1→L2）
+- **report_generate**: 生成并保存分析报告（最终步骤，必须调用才能保存报告）
+
+## 工作原则
+1. **高效检索**：优先 kb_search，必要时才用 wiki_browse；避免重复检索相同内容
+2. **控制轮次**：3~5 次检索后即可整合分析，不要无限循环
+3. **必须生成报告**：用户要求生成报告时，最终必须调用 report_generate 保存，否则报告不会出现在分析报告页面
+4. **引用来源**：所有结论标注来源文档
+5. **中文回复**：始终用中文回答`;
 }

@@ -2,11 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "DeepAnalyze",
+      "name": "deepanalyze",
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "src/main.ts"],
-      "cwd": "/Users/chenyongjian/suzhou_智深/deepanalyze",
-      "port": 21000
+      "port": 21000,
+      "autoPort": false
     }
   ]
 }

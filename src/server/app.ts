@@ -5,6 +5,7 @@ import { sessionRoutes } from "./routes/sessions.js";
 import { chatRoutes } from "./routes/chat.js";
 import { kbRoutes } from "./routes/knowledge-bases.js";
 import { searchRoutes } from "./routes/search.js";
+import { settingsRoutes } from "./routes/settings.js";
 
 export function createApp(): Hono {
   const app = new Hono();
@@ -16,6 +17,7 @@ export function createApp(): Hono {
   app.route("/api/chat", chatRoutes);
   app.route("/api/kb", kbRoutes);
   app.route("/api/search", searchRoutes);
+  app.route("/api/settings", settingsRoutes);
   app.get("/api/health", (c) =>
     c.json({ status: "ok", version: "0.1.0", timestamp: new Date().toISOString() }),
   );

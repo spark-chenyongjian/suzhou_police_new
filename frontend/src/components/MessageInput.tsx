@@ -12,7 +12,6 @@ export function MessageInput() {
     if (!trimmed || isStreaming || !currentSessionId) return;
     sendMessage(trimmed);
     setText("");
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -27,7 +26,6 @@ export function MessageInput() {
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    // Auto-resize
     e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
   };
@@ -35,8 +33,8 @@ export function MessageInput() {
   const disabled = !currentSessionId || isStreaming;
 
   return (
-    <div className="border-t border-gray-800 bg-gray-900 px-4 py-3">
-      <div className="flex items-end gap-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 focus-within:border-blue-500 transition-colors">
+    <div className="border-t border-gray-200 bg-white px-4 py-3">
+      <div className="flex items-end gap-2 bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-400 focus-within:bg-white transition-colors">
         <textarea
           ref={textareaRef}
           value={text}
@@ -51,12 +49,12 @@ export function MessageInput() {
               : "输入消息，Enter 发送，Shift+Enter 换行"
           }
           rows={1}
-          className="flex-1 bg-transparent text-gray-100 text-sm resize-none outline-none placeholder-gray-500 min-h-[24px] max-h-[200px] leading-relaxed"
+          className="flex-1 bg-transparent text-gray-800 text-sm resize-none outline-none placeholder-gray-400 min-h-[24px] max-h-[200px] leading-relaxed"
         />
         <button
           onClick={handleSend}
           disabled={disabled || !text.trim()}
-          className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
           {isStreaming ? (
             <Loader2Icon size={15} className="animate-spin" />
@@ -65,7 +63,7 @@ export function MessageInput() {
           )}
         </button>
       </div>
-      <p className="text-xs text-gray-600 text-center mt-2">
+      <p className="text-xs text-gray-400 text-center mt-2">
         DeepAnalyze — Agent 驱动的深度文档分析系统
       </p>
     </div>

@@ -64,6 +64,11 @@ export class ModelRouter {
   isConfigured(): boolean {
     return this.providers.size > 0;
   }
+
+  async reload(): Promise<void> {
+    this.providers.clear();
+    await this.initialize();
+  }
 }
 
 // Singleton

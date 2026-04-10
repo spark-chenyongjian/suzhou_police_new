@@ -45,13 +45,35 @@ export const api = {
   listSessions: () => request<SessionInfo[]>("/api/sessions"),
   createSession: (title?: string) =>
     request<SessionInfo>("/api/sessions", { method: "POST", body: JSON.stringify({ title }) }),
+  deleteSession: (sessionId: string) =>
+    request<{ ok: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" }),
   getMessages: (sessionId: string) =>
     request<MessageInfo[]>(`/api/sessions/${sessionId}/messages`),
 
   listKbs: () => request<KbInfo[]>("/api/kb"),
   createKb: (name: string, description?: string) =>
     request<KbInfo>("/api/kb", { method: "POST", body: JSON.stringify({ name, description }) }),
+  renameKb: (kbId: string, name: string) =>
+    request<KbInfo>(`/api/kb/${kbId}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+  deleteKb: (kbId: string) =>
+    request<{ ok: boolean }>(`/api/kb/${kbId}`, { method: "DELETE" }),
   listDocuments: (kbId: string) => request<DocInfo[]>(`/api/kb/${kbId}/documents`),
+  deleteDocument: (kbId: string, docId: string) =>
+    request<{ ok: boolean }>(`/api/kb/${kbId}/documents/${docId}`, { method: "DELETE" }),
+  retryDocument: (kbId: string, docId: string) =>
+    request<{ ok: boolean }>(`/api/kb/${kbId}/documents/${docId}/retry`, { method: "POST" }),
+  listWikiPages: (kbId: string) =>
+    request<{ id: string; title: string; pageType: string; docId: string | null; tokenCount: number | null; createdAt: string }[]>(`/api/kb/${kbId}/wiki/pages`),
+  getWikiPageContent: (kbId: string, pageId: string) =>
+    fetch(`${BASE_URL}/api/kb/${kbId}/wiki/pages/${pageId}/content`).then((r) => r.text()),
+  listReports: (kbId: string) =>
+    request<{ id: string; title: string; tokenCount: number | null; createdAt: string; updatedAt: string }[]>(`/api/kb/${kbId}/reports`),
+  getReportContent: (kbId: string, reportId: string) =>
+    fetch(`${BASE_URL}/api/kb/${kbId}/reports/${reportId}/content`).then((r) => r.text()),
+  updateReport: (kbId: string, reportId: string, content: string) =>
+    request<{ ok: boolean }>(`/api/kb/${kbId}/reports/${reportId}`, { method: "PUT", body: JSON.stringify({ content }) }),
+  deleteReport: (kbId: string, reportId: string) =>
+    request<{ ok: boolean }>(`/api/kb/${kbId}/reports/${reportId}`, { method: "DELETE" }),
   uploadDocument: (kbId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);

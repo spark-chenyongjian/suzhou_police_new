@@ -21,6 +21,7 @@ interface ChatState {
   loadSessions: () => Promise<void>;
   createSession: (title?: string) => Promise<void>;
   selectSession: (id: string) => Promise<void>;
+  deleteSession: (id: string) => Promise<void>;
   setCurrentKb: (kbId: string | null) => void;
   sendMessage: (content: string) => void;
   appendStreamChunk: (text: string) => void;
@@ -68,6 +69,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: m.content || "",
       }));
     set({ messages: mapped, isLoading: false });
+  },
+
+  deleteSession: async (id) => {
+    await api.deleteSession(id);
+    set((s) => ({
+      sessions: s.sessions.filter((sess) => sess.id !== id),
+      ...(s.currentSessionId === id ? { currentSessionId: null, messages: [] } : {}),
+    }));
   },
 
   setCurrentKb: (kbId) => set({ currentKbId: kbId }),
@@ -139,17 +148,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       }));
     } else if (event.type === "tool_result") {
+      // Mark the first "running" tool with this name as done
       set((s) => ({
-        messages: s.messages.map((m) =>
-          m.streaming
-            ? {
-                ...m,
-                toolCalls: (m.toolCalls || []).map((tc) =>
-                  tc.name === event.name ? { ...tc, status: "done" as const } : tc
-                ),
-              }
-            : m
-        ),
+        messages: s.messages.map((m) => {
+          if (!m.streaming) return m;
+          let marked = false;
+          const toolCalls = (m.toolCalls || []).map((tc) => {
+            if (!marked && tc.name === event.name && tc.status === "running") {
+              marked = true;
+              return { ...tc, status: "done" as const };
+            }
+            return tc;
+          });
+          return { ...m, toolCalls };
+        }),
       }));
     }
   },

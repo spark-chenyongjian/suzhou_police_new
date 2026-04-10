@@ -42,7 +42,7 @@ console.log(`[Plugins] ${getPlugins().length} plugin(s) loaded, ${getSkills().le
 const app = createApp();
 const port = parseInt(process.env.PORT || "21000");
 
-Bun.serve({ fetch: app.fetch, port });
+Bun.serve({ fetch: app.fetch, port, idleTimeout: 0 });
 console.log(`[DeepAnalyze] Server running at http://localhost:${port}`);
 
 // Graceful shutdown
