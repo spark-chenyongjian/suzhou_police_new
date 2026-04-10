@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { runMigration001 } from "./migrations/001_init.js";
+import { runMigration002 } from "./migrations/002_xlsx_tables.js";
 
 export class DB {
   private db: Database;
@@ -32,6 +33,7 @@ export class DB {
   migrate(): void {
     this.db.exec("CREATE TABLE IF NOT EXISTS _migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)");
     runMigration001(this.db);
+    runMigration002(this.db);
   }
 
   close(): void {

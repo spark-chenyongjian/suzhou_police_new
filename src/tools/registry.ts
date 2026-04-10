@@ -10,6 +10,11 @@ import { ExpandTool } from "./ExpandTool/index.js";
 import { WikiBrowseTool } from "./WikiBrowseTool/index.js";
 import { DoclingParseTool } from "./DoclingParseTool/index.js";
 import { ReportGenerateTool } from "./ReportGenerateTool/index.js";
+import { XlsxQueryTool } from "./XlsxQueryTool/index.js";
+import { WikiEditTool } from "./WikiEditTool/index.js";
+import { WikiLintTool } from "./WikiLintTool/index.js";
+import { TimelineBuildTool } from "./TimelineBuildTool/index.js";
+import { GraphBuildTool } from "./GraphBuildTool/index.js";
 
 export interface ToolDefinition {
   name: string;
@@ -31,6 +36,11 @@ register(ExpandTool as ToolDefinition);
 register(WikiBrowseTool as ToolDefinition);
 register(DoclingParseTool as ToolDefinition);
 register(ReportGenerateTool as ToolDefinition);
+register(XlsxQueryTool as ToolDefinition);
+register(WikiEditTool as ToolDefinition);
+register(WikiLintTool as ToolDefinition);
+register(TimelineBuildTool as ToolDefinition);
+register(GraphBuildTool as ToolDefinition);
 
 export function getTool(name: string): ToolDefinition | undefined {
   return _registry.get(name);

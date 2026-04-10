@@ -21,6 +21,12 @@ import {
   updateWikiPage, deleteWikiPage,
 } from "../../wiki/page-manager.js";
 import { estimateTokensCJK } from "../../models/provider.js";
+import {
+  listSheetsByKb,
+  getSheet,
+  getColumnMetas,
+  querySheetData,
+} from "../../store/data-tables.js";
 
 const DATA_DIR = join(process.cwd(), "data");
 
@@ -173,7 +179,28 @@ async function triggerCompilation(docId: string, kbId: string, filename: string,
   let parsedContent: string;
   const ext = filename.split(".").pop()?.toLowerCase() || "";
 
-  if (["md", "txt"].includes(ext)) {
+  // ── Excel/CSV: structured parsing path ──
+  if (["xlsx", "xls", "csv"].includes(ext)) {
+    try {
+      const { parseExcelToStore } = await import("../../excel/parser.js");
+      const excelResult = await parseExcelToStore({
+        docId,
+        kbId,
+        filePath,
+        filename,
+        onProgress: (stage) => console.log(`[Excel:${docId}] ${stage}`),
+      });
+
+      // Generate a summary as L2 content for the wiki layer
+      const sheetSummaries = excelResult.sheets.map((s) =>
+        `- **${s.sheetName}**: ${s.rowCount} 行 × ${s.colCount} 列 (sheetId: ${s.sheetId})`,
+      );
+      parsedContent = `# ${filename}\n\n## 结构化数据概览\n\n共 ${excelResult.sheets.length} 个工作表，合计 ${excelResult.totalRows} 行数据。\n\n${sheetSummaries.join("\n")}\n\n> 此文档已解析为结构化表格存储，可使用 xlsx_query 工具进行 SQL 查询和聚合分析。`;
+    } catch (err) {
+      console.error(`[Excel] Parse error for ${filename}:`, err);
+      parsedContent = `# ${filename}\n\n*Excel 解析失败: ${err instanceof Error ? err.message : String(err)}*\n`;
+    }
+  } else if (["md", "txt"].includes(ext)) {
     // Plain text — use as-is
     const { readFileSync } = await import("fs");
     parsedContent = readFileSync(filePath, "utf-8");
@@ -215,6 +242,54 @@ async function triggerCompilation(docId: string, kbId: string, filename: string,
 
   console.log(`[Compile] Document ${docId} (${filename}) compiled successfully.`);
 }
+
+// ── XLSX Data Tables ──────────────────────────────────────────────────────
+
+kbRoutes.get("/:kbId/xlsx/sheets", (c) => {
+  const sheets = listSheetsByKb(c.req.param("kbId"));
+  return c.json(sheets.map((s) => ({
+    id: s.id,
+    docId: s.docId,
+    sheetName: s.sheetName,
+    sheetIndex: s.sheetIndex,
+    rowCount: s.rowCount,
+    colCount: s.colCount,
+    headerRow: s.headerRow,
+    schemaJson: s.schemaJson,
+    createdAt: s.createdAt,
+  })));
+});
+
+kbRoutes.get("/:kbId/xlsx/sheets/:sheetId", (c) => {
+  const sheet = getSheet(c.req.param("sheetId"));
+  if (!sheet || sheet.kbId !== c.req.param("kbId")) return c.json({ error: "Not found" }, 404);
+  const metas = getColumnMetas(sheet.id);
+  return c.json({ ...sheet, columns: metas });
+});
+
+kbRoutes.post("/:kbId/xlsx/query", async (c) => {
+  const body = await c.req.json<{
+    sheetId: string;
+    select?: string[];
+    where?: string;
+    orderBy?: string;
+    limit?: number;
+    offset?: number;
+  }>();
+  if (!body.sheetId) return c.json({ error: "sheetId is required" }, 400);
+  try {
+    const result = querySheetData(body.sheetId, {
+      select: body.select,
+      where: body.where,
+      orderBy: body.orderBy,
+      limit: body.limit,
+      offset: body.offset,
+    });
+    return c.json(result);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+  }
+});
 
 // ── Reports (Wiki pages of type "report") ─────────────────────────────────
 
