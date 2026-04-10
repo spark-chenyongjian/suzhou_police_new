@@ -2,7 +2,7 @@
  * 三路融合检索引擎
  *
  * 路径1: FTS5 全文检索 (BM25) — 精确关键词、专有名词、编号
- * 路径2: 向量语义检索 (sqlite-vec，可选) — 语义相关
+ * 路径2: 向量语义检索 (embedding API) — 语义相关
  * 路径3: 链接遍历 — 从命中文档出发沿正反向链接扩展
  *
  * 融合: RRF (Reciprocal Rank Fusion) 合并三路结果
@@ -13,6 +13,7 @@
 import { DB } from "../store/database.js";
 import { getWikiPage, getWikiPageContent } from "./page-manager.js";
 import type { WikiPage } from "../types/index.js";
+import { vectorSearch } from "../models/embedding.js";
 
 export interface SearchHit {
   pageId: string;
@@ -30,6 +31,7 @@ export interface SearchOptions {
   topK?: number;
   levels?: Array<"abstract" | "overview" | "fulltext">;
   expandLinks?: boolean;
+  useVector?: boolean;
 }
 
 // ─── FTS5 Search ─────────────────────────────────────────────────────────────
@@ -115,13 +117,24 @@ function rrfScore(ranks: number[]): number {
 // ─── Main search ──────────────────────────────────────────────────────────────
 
 export async function kbSearch(opts: SearchOptions): Promise<SearchHit[]> {
-  const { query, kbId, topK = 10, levels = ["abstract", "overview"], expandLinks = true } = opts;
+  const { query, kbId, topK = 10, levels = ["abstract", "overview"], expandLinks = true, useVector = true } = opts;
 
   const db = DB.getInstance().raw;
 
   // ── FTS5 search ──
   const ftsHits = ftsSearch(query, kbId, levels, 30);
   const ftsMap = new Map(ftsHits.map((h) => [h.pageId, h]));
+
+  // ── Vector search (semantic) ──
+  let vectorHits: Array<{ pageId: string; score: number }> = [];
+  if (useVector) {
+    try {
+      vectorHits = await vectorSearch(query, kbId, 20, levels);
+    } catch (err) {
+      // Vector search is non-critical — fall back to FTS-only
+      console.warn("[Search] Vector search failed:", err instanceof Error ? err.message : String(err));
+    }
+  }
 
   // ── Link traversal from FTS hits ──
   const linkHitIds = new Set<string>();
@@ -131,16 +144,10 @@ export async function kbSearch(opts: SearchOptions): Promise<SearchHit[]> {
     expanded.forEach((id) => linkHitIds.add(id));
   }
 
-  // ── Merge all candidate page IDs ──
-  const allCandidateIds = new Set<string>([
-    ...ftsHits.map((h) => h.pageId),
-    ...linkHitIds,
-  ]);
-
   // ── Build unified scoring map ──
   const scoreMap = new Map<
     string,
-    { ftsRank?: number; linkRank?: number; snippet: string; sources: Set<"fts" | "vector" | "link"> }
+    { ftsRank?: number; vectorRank?: number; linkRank?: number; snippet: string; sources: Set<"fts" | "vector" | "link"> }
   >();
 
   for (const hit of ftsHits) {
@@ -150,6 +157,17 @@ export async function kbSearch(opts: SearchOptions): Promise<SearchHit[]> {
       sources: new Set(["fts"]),
     });
   }
+
+  // Add vector search results
+  vectorHits.forEach((hit, idx) => {
+    const existing = scoreMap.get(hit.pageId);
+    if (existing) {
+      existing.sources.add("vector");
+      existing.vectorRank = idx + 1;
+    } else {
+      scoreMap.set(hit.pageId, { vectorRank: idx + 1, snippet: "", sources: new Set(["vector"]) });
+    }
+  });
 
   let linkRank = 1;
   for (const id of linkHitIds) {
@@ -167,6 +185,7 @@ export async function kbSearch(opts: SearchOptions): Promise<SearchHit[]> {
   for (const [pageId, info] of scoreMap) {
     const ranks: number[] = [];
     if (info.ftsRank) ranks.push(info.ftsRank);
+    if (info.vectorRank) ranks.push(info.vectorRank);
     if (info.linkRank) ranks.push(info.linkRank);
     const score = rrfScore(ranks);
 

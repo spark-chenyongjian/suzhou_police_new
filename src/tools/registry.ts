@@ -15,6 +15,8 @@ import { WikiEditTool } from "./WikiEditTool/index.js";
 import { WikiLintTool } from "./WikiLintTool/index.js";
 import { TimelineBuildTool } from "./TimelineBuildTool/index.js";
 import { GraphBuildTool } from "./GraphBuildTool/index.js";
+import { XlsxAnalyzeTool } from "./XlsxAnalyzeTool/index.js";
+import { VlmAnalyzeTool } from "./VlmAnalyzeTool/index.js";
 
 export interface ToolDefinition {
   name: string;
@@ -41,6 +43,8 @@ register(WikiEditTool as ToolDefinition);
 register(WikiLintTool as ToolDefinition);
 register(TimelineBuildTool as ToolDefinition);
 register(GraphBuildTool as ToolDefinition);
+register(XlsxAnalyzeTool as ToolDefinition);
+register(VlmAnalyzeTool as ToolDefinition);
 
 export function getTool(name: string): ToolDefinition | undefined {
   return _registry.get(name);

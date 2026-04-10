@@ -112,6 +112,8 @@ export function deleteWikiPage(id: string): void {
     if (existsSync(absPath)) unlinkSync(absPath);
   } catch { /* ignore fs errors */ }
   db.query("DELETE FROM wiki_links WHERE source_page_id = ? OR target_page_id = ?").run(id, id);
+  db.query("DELETE FROM fts_content WHERE page_id = ?").run(id);
+  db.query("DELETE FROM page_embeddings WHERE page_id = ?").run(id);
   db.query("DELETE FROM wiki_pages WHERE id = ?").run(id);
 }
 
