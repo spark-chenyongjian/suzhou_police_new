@@ -1,4 +1,4 @@
-import { MessageSquareIcon, DatabaseIcon, FileTextIcon, ListTodoIcon, SettingsIcon, BrainCircuitIcon, PuzzleIcon } from "lucide-react";
+import { MessageSquareIcon, DatabaseIcon, FileTextIcon, ListTodoIcon, SettingsIcon, BrainCircuitIcon, PuzzleIcon, ClockIcon, GitBranchIcon } from "lucide-react";
 import { type NavState, type NavPage } from "../App";
 
 interface Props {
@@ -10,6 +10,8 @@ const NAV_ITEMS: { page: NavPage; icon: React.ReactNode; label: string }[] = [
   { page: "chat", icon: <MessageSquareIcon size={20} />, label: "对话分析" },
   { page: "kb", icon: <DatabaseIcon size={20} />, label: "知识库" },
   { page: "reports", icon: <FileTextIcon size={20} />, label: "分析报告" },
+  { page: "timeline", icon: <ClockIcon size={20} />, label: "时间线" },
+  { page: "graph", icon: <GitBranchIcon size={20} />, label: "关系图谱" },
   { page: "tasks", icon: <ListTodoIcon size={20} />, label: "任务面板" },
   { page: "plugins", icon: <PuzzleIcon size={20} />, label: "插件管理" },
   { page: "settings", icon: <SettingsIcon size={20} />, label: "设置" },

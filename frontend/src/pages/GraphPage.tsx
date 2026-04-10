@@ -1,0 +1,284 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { GitBranchIcon, Loader2Icon, DatabaseIcon, ZoomInIcon, ZoomOutIcon, MaximizeIcon } from "lucide-react";
+import { api, type KbInfo, type SheetInfo, type ColumnMeta } from "../api/client";
+
+interface Props {
+  kbId: string | null;
+}
+
+interface GraphNode {
+  id: string;
+  label: string;
+  type: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
+
+interface GraphEdge {
+  source: string;
+  target: string;
+  label: string;
+}
+
+// Force-directed layout simulation
+const SIMULATION_STEPS = 120;
+const REPULSION = 2000;
+const ATTRACTION = 0.005;
+const DAMPING = 0.85;
+const CENTER_PULL = 0.01;
+
+export function GraphPage({ kbId }: Props) {
+  const [kbs, setKbs] = useState<KbInfo[]>([]);
+  const [selectedKbId, setSelectedKbId] = useState<string | null>(kbId);
+  const [sheets, setSheets] = useState<SheetInfo[]>([]);
+  const [selectedSheetId, setSelectedSheetId] = useState<string | null>(null);
+  const [col1, setCol1] = useState<string | null>(null);
+  const [col2, setCol2] = useState<string | null>(null);
+  const [relationCol, setRelationCol] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [nodes, setNodes] = useState<GraphNode[]>([]);
+  const [edges, setEdges] = useState<GraphEdge[]>([]);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => { api.listKbs().then(setKbs).catch(console.error); }, []);
+  useEffect(() => {
+    if (!selectedKbId) { setSheets([]); return; }
+    api.listXlsxSheets(selectedKbId).then(setSheets).catch(console.error);
+  }, [selectedKbId]);
+
+  // Auto-select first two text columns
+  useEffect(() => {
+    const sheet = sheets.find((s) => s.id === selectedSheetId);
+    if (!sheet) return;
+    const textCols = sheet.headerRow.filter((h) => (sheet.schemaJson[h] || "text") === "text");
+    setCol1(textCols[0] || sheet.headerRow[0] || null);
+    setCol2(textCols[1] || sheet.headerRow[1] || null);
+    setRelationCol(textCols[2] || null);
+  }, [selectedSheetId, sheets]);
+
+  const buildGraph = async () => {
+    if (!selectedKbId || !selectedSheetId || !col1 || !col2) return;
+    setIsLoading(true);
+    try {
+      const result = await api.queryXlsx(selectedKbId, { sheetId: selectedSheetId, limit: 5000 });
+      const nodeMap = new Map<string, GraphNode>();
+      const edgeList: GraphEdge[] = [];
+      let idx = 0;
+
+      for (const row of result.rows) {
+        const a = String(row[col1] || "").trim();
+        const b = String(row[col2] || "").trim();
+        if (!a || !b || a === b) continue;
+
+        if (!nodeMap.has(a)) nodeMap.set(a, { id: a, label: a, type: "entity", x: Math.random() * 600 - 300, y: Math.random() * 600 - 300, vx: 0, vy: 0 });
+        if (!nodeMap.has(b)) nodeMap.set(b, { id: b, label: b, type: "entity", x: Math.random() * 600 - 300, y: Math.random() * 600 - 300, vx: 0, vy: 0 });
+
+        const relLabel = relationCol ? String(row[relationCol] || "") : "";
+        edgeList.push({ source: a, target: b, label: relLabel });
+        idx++;
+      }
+
+      // Run force simulation
+      const simNodes = [...nodeMap.values()];
+      for (let step = 0; step < SIMULATION_STEPS; step++) {
+        // Repulsion
+        for (let i = 0; i < simNodes.length; i++) {
+          for (let j = i + 1; j < simNodes.length; j++) {
+            const dx = simNodes[i].x - simNodes[j].x;
+            const dy = simNodes[i].y - simNodes[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const force = REPULSION / (dist * dist);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            simNodes[i].vx += fx; simNodes[i].vy += fy;
+            simNodes[j].vx -= fx; simNodes[j].vy -= fy;
+          }
+        }
+        // Attraction (edges)
+        for (const edge of edgeList) {
+          const s = nodeMap.get(edge.source)!;
+          const t = nodeMap.get(edge.target)!;
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          s.vx += dx * ATTRACTION; s.vy += dy * ATTRACTION;
+          t.vx -= dx * ATTRACTION; t.vy -= dy * ATTRACTION;
+        }
+        // Center pull + update positions
+        for (const n of simNodes) {
+          n.vx -= n.x * CENTER_PULL;
+          n.vy -= n.y * CENTER_PULL;
+          n.vx *= DAMPING;
+          n.vy *= DAMPING;
+          n.x += n.vx;
+          n.y += n.vy;
+        }
+      }
+
+      setNodes(simNodes);
+      setEdges(edgeList);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Draw canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || nodes.length === 0) return;
+    const ctx = canvas.getContext("2d")!;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    const cx = rect.width / 2 + pan.x;
+    const cy = rect.height / 2 + pan.y;
+
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    // Draw edges
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1;
+    ctx.font = "10px sans-serif";
+    for (const edge of edges) {
+      const s = nodes.find((n) => n.id === edge.source);
+      const t = nodes.find((n) => n.id === edge.target);
+      if (!s || !t) continue;
+      ctx.beginPath();
+      ctx.moveTo(cx + s.x * zoom, cy + s.y * zoom);
+      ctx.lineTo(cx + t.x * zoom, cy + t.y * zoom);
+      ctx.stroke();
+      if (edge.label && zoom > 0.6) {
+        const mx = cx + (s.x + t.x) / 2 * zoom;
+        const my = cy + (s.y + t.y) / 2 * zoom;
+        ctx.fillStyle = "#64748b";
+        ctx.textAlign = "center";
+        ctx.fillText(edge.label.slice(0, 12), mx, my - 3);
+      }
+    }
+
+    // Draw nodes
+    for (const node of nodes) {
+      const x = cx + node.x * zoom;
+      const y = cy + node.y * zoom;
+      // Node circle
+      ctx.beginPath();
+      ctx.arc(x, y, 6 * zoom, 0, Math.PI * 2);
+      ctx.fillStyle = "#3b82f6";
+      ctx.fill();
+      ctx.strokeStyle = "#1d4ed8";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Label
+      if (zoom > 0.4) {
+        ctx.fillStyle = "#1e293b";
+        ctx.font = `${Math.max(9, 11 * zoom)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText(node.label.slice(0, 10), x, y - 10 * zoom);
+      }
+    }
+  }, [nodes, edges, zoom, pan]);
+
+  const sheet = sheets.find((s) => s.id === selectedSheetId);
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Left: Config */}
+      <div className="w-72 border-r border-gray-200 bg-white flex flex-col shrink-0">
+        <div className="px-4 py-3 border-b border-gray-200">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">知识库</label>
+          <select value={selectedKbId || ""} onChange={(e) => { setSelectedKbId(e.target.value || null); setSelectedSheetId(null); setNodes([]); }}
+            className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+            <option value="">选择知识库...</option>
+            {kbs.map((kb) => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
+          </select>
+        </div>
+
+        {selectedKbId && (
+          <div className="px-4 py-3 border-b border-gray-200">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">数据表</label>
+            <select value={selectedSheetId || ""} onChange={(e) => { setSelectedSheetId(e.target.value || null); setNodes([]); }}
+              className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+              <option value="">选择工作表...</option>
+              {sheets.map((s) => <option key={s.id} value={s.id}>{s.sheetName} ({s.rowCount}行)</option>)}
+            </select>
+          </div>
+        )}
+
+        {sheet && (
+          <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">实体列 A</label>
+              <select value={col1 || ""} onChange={(e) => setCol1(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">实体列 B</label>
+              <select value={col2 || ""} onChange={(e) => setCol2(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">关系标签列 (可选)</label>
+              <select value={relationCol || ""} onChange={(e) => setRelationCol(e.target.value || null)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                <option value="">无</option>
+                {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+            <button onClick={buildGraph} disabled={!col1 || !col2 || isLoading}
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors">
+              {isLoading ? <Loader2Icon size={14} className="animate-spin inline mr-1" /> : <GitBranchIcon size={14} className="inline mr-1" />}
+              生成关系图谱
+            </button>
+          </div>
+        )}
+
+        {nodes.length > 0 && (
+          <div className="px-4 py-3 text-xs text-gray-500">
+            {nodes.length} 个节点，{edges.length} 条关系
+          </div>
+        )}
+      </div>
+
+      {/* Right: Graph canvas */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        {nodes.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <GitBranchIcon size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500 text-sm font-medium">选择数据表和实体列生成关系图谱</p>
+              <p className="text-gray-400 text-xs mt-1">自动从 Excel 数据中提取实体关系</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="h-10 border-b border-gray-200 flex items-center px-4 gap-2 shrink-0">
+              <button onClick={() => setZoom((z) => Math.min(z * 1.3, 5))} className="p-1.5 rounded hover:bg-gray-100"><ZoomInIcon size={14} /></button>
+              <button onClick={() => setZoom((z) => Math.max(z / 1.3, 0.2))} className="p-1.5 rounded hover:bg-gray-100"><ZoomOutIcon size={14} /></button>
+              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="p-1.5 rounded hover:bg-gray-100"><MaximizeIcon size={14} /></button>
+              <span className="text-xs text-gray-400 ml-2">{Math.round(zoom * 100)}%</span>
+            </div>
+            <canvas ref={canvasRef} className="flex-1 w-full" style={{ cursor: "grab" }}
+              onMouseDown={(e) => {
+                const start = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+                const onMove = (ev: MouseEvent) => setPan({ x: ev.clientX - start.x, y: ev.clientY - start.y });
+                const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+                window.addEventListener("mousemove", onMove);
+                window.addEventListener("mouseup", onUp);
+              }}
+              onWheel={(e) => setZoom((z) => Math.max(0.2, Math.min(5, z - e.deltaY * 0.001)))}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

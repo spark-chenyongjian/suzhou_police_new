@@ -6,8 +6,10 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PluginsPage } from "./pages/PluginsPage";
+import { TimelinePage } from "./pages/TimelinePage";
+import { GraphPage } from "./pages/GraphPage";
 
-export type NavPage = "chat" | "kb" | "reports" | "tasks" | "settings" | "plugins";
+export type NavPage = "chat" | "kb" | "reports" | "timeline" | "graph" | "tasks" | "settings" | "plugins";
 
 export interface NavState {
   page: NavPage;
@@ -24,6 +26,8 @@ export function App() {
         {nav.page === "chat" && <ChatPage kbId={nav.kbId} />}
         {nav.page === "kb" && <KnowledgeBasePage kbId={nav.kbId} onKbChange={(id) => setNav({ page: "kb", kbId: id })} />}
         {nav.page === "reports" && <ReportsPage kbId={nav.kbId} />}
+        {nav.page === "timeline" && <TimelinePage kbId={nav.kbId} />}
+        {nav.page === "graph" && <GraphPage kbId={nav.kbId} />}
         {nav.page === "tasks" && <TasksPage kbId={nav.kbId} />}
         {nav.page === "settings" && <SettingsPage />}
         {nav.page === "plugins" && <PluginsPage />}

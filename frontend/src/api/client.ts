@@ -41,6 +41,39 @@ export interface DocInfo {
   createdAt: string;
 }
 
+export interface SheetInfo {
+  id: string;
+  docId: string;
+  sheetName: string;
+  sheetIndex: number;
+  rowCount: number;
+  colCount: number;
+  headerRow: string[];
+  schemaJson: Record<string, string>;
+  createdAt: string;
+}
+
+export interface ColumnMeta {
+  colName: string;
+  colIndex: number;
+  detectedType: string;
+  nullCount: number;
+  distinctCount: number;
+  minValue: string | null;
+  maxValue: string | null;
+  avgValue: string | null;
+  sampleValues: string[];
+}
+
+export interface DataQueryResult {
+  sheetId: string;
+  sheetName: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  totalRows: number;
+  truncated: boolean;
+}
+
 export const api = {
   listSessions: () => request<SessionInfo[]>("/api/sessions"),
   createSession: (title?: string) =>
@@ -74,6 +107,15 @@ export const api = {
     request<{ ok: boolean }>(`/api/kb/${kbId}/reports/${reportId}`, { method: "PUT", body: JSON.stringify({ content }) }),
   deleteReport: (kbId: string, reportId: string) =>
     request<{ ok: boolean }>(`/api/kb/${kbId}/reports/${reportId}`, { method: "DELETE" }),
+
+  // XLSX data tables
+  listXlsxSheets: (kbId: string) =>
+    request<SheetInfo[]>(`/api/kb/${kbId}/xlsx/sheets`),
+  getXlsxSheet: (kbId: string, sheetId: string) =>
+    request<SheetInfo & { columns: ColumnMeta[] }>(`/api/kb/${kbId}/xlsx/sheets/${sheetId}`),
+  queryXlsx: (kbId: string, body: { sheetId: string; select?: string[]; where?: string; orderBy?: string; limit?: number; offset?: number }) =>
+    request<DataQueryResult>(`/api/kb/${kbId}/xlsx/query`, { method: "POST", body: JSON.stringify(body) }),
+
   uploadDocument: (kbId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
