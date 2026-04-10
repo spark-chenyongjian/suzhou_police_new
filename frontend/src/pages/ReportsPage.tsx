@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { FileTextIcon, Loader2Icon, Trash2Icon, PencilIcon, CheckIcon, XIcon, DatabaseIcon } from "lucide-react";
+import { FileTextIcon, Loader2Icon, Trash2Icon, PencilIcon, CheckIcon, XIcon, DatabaseIcon, CodeIcon } from "lucide-react";
 import { api, type KbInfo } from "../api/client";
+import { MarkdownView } from "../components/MarkdownView";
 
 type ReportInfo = { id: string; title: string; tokenCount: number | null; createdAt: string; updatedAt: string };
 
@@ -15,6 +16,7 @@ export function ReportsPage({ kbId }: Props) {
   const [selectedReport, setSelectedReport] = useState<ReportInfo | null>(null);
   const [content, setContent] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isRawView, setIsRawView] = useState(false);
   const [editContent, setEditContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -157,6 +159,17 @@ export function ReportsPage({ kbId }: Props) {
                 ) : (
                   <>
                     <button
+                      onClick={() => setIsRawView((v) => !v)}
+                      title={isRawView ? "切换到渲染视图" : "切换到原文视图"}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs font-medium rounded-lg transition-colors ${
+                        isRawView
+                          ? "border-blue-300 text-blue-600 bg-blue-50 hover:bg-blue-100"
+                          : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <CodeIcon size={12} />{isRawView ? "原文" : "渲染"}
+                    </button>
+                    <button
                       onClick={() => setIsEditing(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50"
                     >
@@ -185,9 +198,13 @@ export function ReportsPage({ kbId }: Props) {
                   className="w-full h-full p-6 text-sm text-gray-800 font-mono resize-none outline-none leading-relaxed bg-gray-50 border-0"
                   spellCheck={false}
                 />
-              ) : (
+              ) : isRawView ? (
                 <div className="h-full overflow-y-auto p-6">
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{content}</pre>
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">{content}</pre>
+                </div>
+              ) : (
+                <div className="h-full overflow-y-auto p-6 max-w-3xl">
+                  <MarkdownView content={content} />
                 </div>
               )}
             </div>

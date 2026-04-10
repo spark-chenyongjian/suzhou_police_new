@@ -5,8 +5,9 @@ import { KnowledgeBasePage } from "./pages/KnowledgeBasePage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { PluginsPage } from "./pages/PluginsPage";
 
-export type NavPage = "chat" | "kb" | "reports" | "tasks" | "settings";
+export type NavPage = "chat" | "kb" | "reports" | "tasks" | "settings" | "plugins";
 
 export interface NavState {
   page: NavPage;
@@ -25,6 +26,7 @@ export function App() {
         {nav.page === "reports" && <ReportsPage kbId={nav.kbId} />}
         {nav.page === "tasks" && <TasksPage kbId={nav.kbId} />}
         {nav.page === "settings" && <SettingsPage />}
+        {nav.page === "plugins" && <PluginsPage />}
       </main>
     </div>
   );
