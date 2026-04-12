@@ -11,8 +11,7 @@ import { z } from "zod";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { listWikiPagesByKb } from "../../wiki/page-manager.js";
-
-const DATA_DIR = join(process.cwd(), "data");
+import { DATA_DIR } from "../../paths.js";
 
 export const WikiBrowseInputSchema = z.object({
   kbId: z.string().describe("Knowledge base ID"),

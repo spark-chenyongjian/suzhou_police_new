@@ -4,6 +4,7 @@ import { estimateTokensCJK } from "./provider.js";
 import { readFileSync, existsSync } from "fs";
 import { parse as parseYaml } from "yaml";
 import { join } from "path";
+import { CONFIG_DIR } from "../paths.js";
 
 export class ModelRouter {
   private providers: Map<string, ModelProvider> = new Map();
@@ -11,7 +12,7 @@ export class ModelRouter {
   private config: ModelConfig | null = null;
 
   async initialize(configPath?: string): Promise<void> {
-    const path = configPath || join(process.cwd(), "config", "model-config.yaml");
+    const path = configPath || join(CONFIG_DIR, "model-config.yaml");
     if (!existsSync(path)) {
       console.warn(`[ModelRouter] Config not found at ${path}, model calls will fail until configured.`);
       return;

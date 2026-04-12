@@ -77,6 +77,13 @@ export function updateKnowledgeBase(id: string, opts: { name?: string; descripti
 
 export function deleteKnowledgeBase(id: string): void {
   const db = DB.getInstance().raw;
+  // Clean up xlsx data for all docs in this KB
+  try {
+    const docs = db.query("SELECT id FROM documents WHERE kb_id = ?").all(id) as Record<string, unknown>[];
+    for (const doc of docs) {
+      deleteDocument(doc.id as string);
+    }
+  } catch { /* ignore */ }
   db.query("DELETE FROM documents WHERE kb_id = ?").run(id);
   db.query("DELETE FROM wiki_pages WHERE kb_id = ?").run(id);
   db.query("DELETE FROM knowledge_bases WHERE id = ?").run(id);
@@ -132,15 +139,31 @@ export function getDocument(id: string): Document | null {
 
 export function deleteDocument(id: string): void {
   const db = DB.getInstance().raw;
-  // Clean up xlsx data tables for sheets belonging to this document
-  const sheets = db.query("SELECT id FROM xlsx_sheets WHERE doc_id = ?").all(id) as Record<string, unknown>[];
-  for (const sheet of sheets) {
-    const sheetId = sheet.id as string;
-    const dataTableName = `xlsx_data_${sheetId.replace(/-/g, "_")}`;
-    try { db.exec(`DROP TABLE IF EXISTS "${dataTableName}"`); } catch { /* ignore */ }
-    db.query("DELETE FROM fts_xlsx WHERE sheet_id = ?").run(sheetId);
+  // 1. Clean up xlsx data tables for sheets belonging to this document
+  try {
+    const sheets = db.query("SELECT id FROM xlsx_sheets WHERE doc_id = ?").all(id) as Record<string, unknown>[];
+    for (const sheet of sheets) {
+      const sheetId = sheet.id as string;
+      const dataTableName = `xlsx_data_${sheetId.replace(/-/g, "_")}`;
+      try { db.exec(`DROP TABLE IF EXISTS "${dataTableName}"`); } catch { /* ignore */ }
+      try { db.query("DELETE FROM fts_xlsx WHERE sheet_id = ?").run(sheetId); } catch { /* ignore */ }
+    }
+    try { db.query("DELETE FROM xlsx_columns WHERE sheet_id IN (SELECT id FROM xlsx_sheets WHERE doc_id = ?)").run(id); } catch { /* ignore */ }
+    try { db.query("DELETE FROM xlsx_sheets WHERE doc_id = ?").run(id); } catch { /* ignore */ }
+  } catch { /* xlsx tables may not exist in older DBs */ }
+
+  // 2. Get wiki page IDs for this doc (needed for FK cleanup)
+  const pageIds = (db.query("SELECT id FROM wiki_pages WHERE doc_id = ?").all(id) as Record<string, unknown>[]).map((r) => r.id as string);
+
+  // 3. Delete wiki_links referencing these pages
+  for (const pageId of pageIds) {
+    db.query("DELETE FROM wiki_links WHERE source_page_id = ? OR target_page_id = ?").run(pageId, pageId);
+    try { db.query("DELETE FROM fts_content WHERE page_id = ?").run(pageId); } catch { /* ignore */ }
   }
-  db.query("DELETE FROM xlsx_sheets WHERE doc_id = ?").run(id);
+
+  // 4. Now safe to delete wiki_pages
   db.query("DELETE FROM wiki_pages WHERE doc_id = ?").run(id);
+
+  // 5. Finally delete the document
   db.query("DELETE FROM documents WHERE id = ?").run(id);
 }

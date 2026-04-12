@@ -10,6 +10,7 @@
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { parse as parseYaml } from "yaml";
+import { PLUGINS_DIR, SKILLS_DIR } from "../paths.js";
 
 export interface PluginAgentDef {
   extends: string;
@@ -53,7 +54,7 @@ const _plugins = new Map<string, PluginDefinition>();
 const _skills = new Map<string, SkillDefinition>();
 
 export function loadPlugins(baseDir?: string): void {
-  const dir = baseDir || join(process.cwd(), "plugins");
+  const dir = baseDir || PLUGINS_DIR;
   if (!existsSync(dir)) return;
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -75,7 +76,7 @@ export function loadPlugins(baseDir?: string): void {
 }
 
 export function loadSkills(baseDir?: string): void {
-  const dir = baseDir || join(process.cwd(), "skills");
+  const dir = baseDir || SKILLS_DIR;
   if (!existsSync(dir)) return;
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

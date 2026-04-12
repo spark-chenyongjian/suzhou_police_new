@@ -9,9 +9,8 @@ import { dirname, join } from "path";
 import { randomUUID } from "crypto";
 import { createHash } from "crypto";
 import { DB } from "../store/database.js";
+import { DATA_DIR } from "../paths.js";
 import type { WikiPage } from "../types/index.js";
-
-const DATA_DIR = join(process.cwd(), "data");
 
 export function wikiDir(kbId: string): string {
   return join(DATA_DIR, "wiki", kbId);
@@ -112,8 +111,8 @@ export function deleteWikiPage(id: string): void {
     if (existsSync(absPath)) unlinkSync(absPath);
   } catch { /* ignore fs errors */ }
   db.query("DELETE FROM wiki_links WHERE source_page_id = ? OR target_page_id = ?").run(id, id);
-  db.query("DELETE FROM fts_content WHERE page_id = ?").run(id);
-  db.query("DELETE FROM page_embeddings WHERE page_id = ?").run(id);
+  try { db.query("DELETE FROM fts_content WHERE page_id = ?").run(id); } catch { /* ignore */ }
+  try { db.query("DELETE FROM page_embeddings WHERE page_id = ?").run(id); } catch { /* ignore */ }
   db.query("DELETE FROM wiki_pages WHERE id = ?").run(id);
 }
 

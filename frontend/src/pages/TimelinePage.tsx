@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { ClockIcon, Loader2Icon, DatabaseIcon, ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import { api, type KbInfo, type DataQueryResult, type SheetInfo } from "../api/client";
+import { ClockIcon, Loader2Icon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, TableIcon } from "lucide-react";
+import { api, type KbInfo, type SheetInfo } from "../api/client";
 
 interface Props {
   kbId: string | null;
@@ -15,12 +15,15 @@ interface TimelineEvent {
   source: string;
 }
 
-// Date column candidates
+type DataSource = "wiki" | "xlsx";
+
+// Date column candidates for xlsx mode
 const DATE_COL_NAMES = ["日期", "时间", "date", "time", "datetime", "timestamp", "发生时间", "创建时间", "交易日期", "交易时间"];
 
 export function TimelinePage({ kbId }: Props) {
   const [kbs, setKbs] = useState<KbInfo[]>([]);
   const [selectedKbId, setSelectedKbId] = useState<string | null>(kbId);
+  const [dataSource, setDataSource] = useState<DataSource>("wiki");
   const [sheets, setSheets] = useState<SheetInfo[]>([]);
   const [selectedSheetId, setSelectedSheetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +40,26 @@ export function TimelinePage({ kbId }: Props) {
     api.listXlsxSheets(selectedKbId).then(setSheets).catch(console.error);
   }, [selectedKbId]);
 
-  const loadTimeline = async () => {
+  // Auto-load timeline when KB changes in wiki mode
+  useEffect(() => {
+    if (selectedKbId && dataSource === "wiki") {
+      loadWikiTimeline();
+    }
+  }, [selectedKbId, dataSource]);
+
+  const loadWikiTimeline = async () => {
+    if (!selectedKbId) return;
+    setIsLoading(true);
+    setEvents([]);
+    try {
+      const result = await api.getWikiTimeline(selectedKbId);
+      setEvents(result.events);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadXlsxTimeline = async () => {
     if (!selectedKbId || !selectedSheetId || !dateCol) return;
     setIsLoading(true);
     try {
@@ -62,7 +84,7 @@ export function TimelinePage({ kbId }: Props) {
     }
   };
 
-  // Auto-detect date and description columns when sheet changes
+  // Auto-detect columns for xlsx mode
   useEffect(() => {
     const sheet = sheets.find((s) => s.id === selectedSheetId);
     if (!sheet) { setDateCol(null); setDescCol(null); return; }
@@ -80,7 +102,7 @@ export function TimelinePage({ kbId }: Props) {
     const groups = new Map<string, TimelineEvent[]>();
     for (const ev of events) {
       let key: string;
-      const ts = ev.timestamp.slice(0, 10); // YYYY-MM-DD
+      const ts = ev.timestamp.slice(0, 10);
       if (groupBy === "year") key = ts.slice(0, 4);
       else if (groupBy === "month") key = ts.slice(0, 7);
       else key = ts;
@@ -106,7 +128,11 @@ export function TimelinePage({ kbId }: Props) {
       <div className="w-72 border-r border-gray-200 bg-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-gray-200">
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">知识库</label>
-          <select value={selectedKbId || ""} onChange={(e) => { setSelectedKbId(e.target.value || null); setSelectedSheetId(null); setEvents([]); }}
+          <select value={selectedKbId || ""} onChange={(e) => {
+            setSelectedKbId(e.target.value || null);
+            setSelectedSheetId(null);
+            setEvents([]);
+          }}
             className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
             <option value="">选择知识库...</option>
             {kbs.map((kb) => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
@@ -115,50 +141,86 @@ export function TimelinePage({ kbId }: Props) {
 
         {selectedKbId && (
           <div className="px-4 py-3 border-b border-gray-200">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">数据表</label>
-            <select value={selectedSheetId || ""} onChange={(e) => { setSelectedSheetId(e.target.value || null); setEvents([]); }}
-              className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
-              <option value="">选择工作表...</option>
-              {sheets.map((s) => <option key={s.id} value={s.id}>{s.sheetName} ({s.rowCount}行)</option>)}
-            </select>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">数据来源</label>
+            <div className="flex gap-1">
+              <button onClick={() => { setDataSource("wiki"); setEvents([]); }}
+                className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
+                  dataSource === "wiki" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}>
+                <FileTextIcon size={12} /> Wiki 文档
+              </button>
+              <button onClick={() => { setDataSource("xlsx"); setEvents([]); }}
+                className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
+                  dataSource === "xlsx" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}>
+                <TableIcon size={12} /> Excel 表格
+              </button>
+            </div>
           </div>
         )}
 
-        {sheet && (
-          <div className="px-4 py-3 border-b border-gray-200 space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">时间列</label>
-              <select value={dateCol || ""} onChange={(e) => setDateCol(e.target.value)}
+        {selectedKbId && dataSource === "xlsx" && (
+          <>
+            <div className="px-4 py-3 border-b border-gray-200">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">数据表</label>
+              <select value={selectedSheetId || ""} onChange={(e) => { setSelectedSheetId(e.target.value || null); setEvents([]); }}
                 className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
-                {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
+                <option value="">选择工作表...</option>
+                {sheets.map((s) => <option key={s.id} value={s.id}>{s.sheetName} ({s.rowCount}行)</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">描述列</label>
-              <select value={descCol || ""} onChange={(e) => setDescCol(e.target.value || null)}
-                className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
-                <option value="">自动</option>
-                {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">分组</label>
-              <div className="flex gap-1">
-                {(["day", "month", "year"] as const).map((g) => (
-                  <button key={g} onClick={() => setGroupBy(g)}
-                    className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors ${
-                      groupBy === g ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}>
-                    {g === "day" ? "按天" : g === "month" ? "按月" : "按年"}
-                  </button>
-                ))}
+            {sheet && (
+              <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">时间列</label>
+                  <select value={dateCol || ""} onChange={(e) => setDateCol(e.target.value)}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                    {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">描述列</label>
+                  <select value={descCol || ""} onChange={(e) => setDescCol(e.target.value || null)}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                    <option value="">自动</option>
+                    {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+                <button onClick={loadXlsxTimeline} disabled={!dateCol || isLoading}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors">
+                  {isLoading ? <Loader2Icon size={14} className="animate-spin inline mr-1" /> : <ClockIcon size={14} className="inline mr-1" />}
+                  生成时间线
+                </button>
               </div>
-            </div>
-            <button onClick={loadTimeline} disabled={!dateCol || isLoading}
+            )}
+          </>
+        )}
+
+        {selectedKbId && dataSource === "wiki" && (
+          <div className="px-4 py-3 border-b border-gray-200">
+            <p className="text-xs text-gray-500 mb-2">自动从 Wiki 文档中提取日期和时间信息。</p>
+            <button onClick={loadWikiTimeline} disabled={isLoading}
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors">
               {isLoading ? <Loader2Icon size={14} className="animate-spin inline mr-1" /> : <ClockIcon size={14} className="inline mr-1" />}
-              生成时间线
+              刷新时间线
             </button>
+          </div>
+        )}
+
+        {/* Group by controls */}
+        {events.length > 0 && (
+          <div className="px-4 py-3 border-b border-gray-200">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">分组</label>
+            <div className="flex gap-1">
+              {(["day", "month", "year"] as const).map((g) => (
+                <button key={g} onClick={() => setGroupBy(g)}
+                  className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors ${
+                    groupBy === g ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}>
+                  {g === "day" ? "按天" : g === "month" ? "按月" : "按年"}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -171,12 +233,19 @@ export function TimelinePage({ kbId }: Props) {
 
       {/* Right: Timeline visualization */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white">
-        {events.length === 0 ? (
+        {events.length === 0 && !isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <ClockIcon size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm font-medium">选择数据表和时间列生成时间线</p>
-              <p className="text-gray-400 text-xs mt-1">支持 Excel/CSV 中的日期列自动识别</p>
+              <p className="text-gray-500 text-sm font-medium">选择知识库自动提取时间线</p>
+              <p className="text-gray-400 text-xs mt-1">支持 Wiki 文档和 Excel 数据两种来源</p>
+            </div>
+          </div>
+        ) : isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <Loader2Icon size={32} className="mx-auto text-blue-400 mb-3 animate-spin" />
+              <p className="text-gray-500 text-sm">正在提取时间信息...</p>
             </div>
           </div>
         ) : (
@@ -199,6 +268,7 @@ export function TimelinePage({ kbId }: Props) {
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-mono text-gray-500">{ev.timestamp}</p>
                             <p className="text-sm text-gray-800 break-words">{ev.description.slice(0, 200)}</p>
+                            {ev.source && <p className="text-xs text-gray-400 mt-0.5">来源: {ev.source}</p>}
                           </div>
                         </div>
                       ))}

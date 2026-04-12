@@ -10,23 +10,5 @@ models:
     maxTokens: 32768
     supportsToolUse: true
 
-  # Embedding model for vector search (optional, enables 3-way fusion search)
-  # embedding:
-  #   provider: openai-compatible
-  #   endpoint: https://api.siliconflow.cn/v1
-  #   apiKey: your-api-key
-  #   model: BAAI/bge-m3
-  #   dimension: 1024
-
-  # VLM model for image analysis (optional, enables vlm_analyze tool)
-  # vlm:
-  #   provider: openai-compatible
-  #   endpoint: https://api.siliconflow.cn/v1
-  #   apiKey: your-api-key
-  #   model: Qwen/Qwen2.5-VL-72B-Instruct
-  #   maxTokens: 8192
-
 defaults:
   main: main
-  # embedding: embedding
-  # vlm: vlm

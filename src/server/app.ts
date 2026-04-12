@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { join, dirname } from "path";
+import { join } from "path";
 import { readFileSync, existsSync } from "fs";
 import { sessionRoutes } from "./routes/sessions.js";
 import { chatRoutes } from "./routes/chat.js";
@@ -8,10 +8,7 @@ import { kbRoutes } from "./routes/knowledge-bases.js";
 import { searchRoutes } from "./routes/search.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { pluginRoutes } from "./routes/plugins.js";
-
-// Resolve project root (3 levels up from this file: app.ts -> server -> src -> project)
-const PROJECT_ROOT = join(decodeURIComponent(dirname(import.meta.url.replace("file://", ""))), "..", "..");
-const FRONTEND_DIST = join(PROJECT_ROOT, "frontend", "dist");
+import { FRONTEND_DIST } from "../paths.js";
 
 // MIME types for static files
 const MIME: Record<string, string> = {

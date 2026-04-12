@@ -11,6 +11,7 @@ import { mkdirSync, writeFileSync } from "fs";
 import { randomUUID } from "crypto";
 import { DB } from "../../store/database.js";
 import { createWikiPage } from "../../wiki/page-manager.js";
+import { DATA_DIR } from "../../paths.js";
 
 export const ReportGenerateInputSchema = z.object({
   kbId: z.string().describe("Knowledge base ID"),
@@ -25,8 +26,6 @@ export const ReportGenerateInputSchema = z.object({
 });
 
 export type ReportGenerateInput = z.infer<typeof ReportGenerateInputSchema>;
-
-const DATA_DIR = join(process.cwd(), "data");
 
 export const ReportGenerateTool = {
   name: "report_generate" as const,

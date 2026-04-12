@@ -108,6 +108,14 @@ export const api = {
   deleteReport: (kbId: string, reportId: string) =>
     request<{ ok: boolean }>(`/api/kb/${kbId}/reports/${reportId}`, { method: "DELETE" }),
 
+  // Wiki knowledge graph & timeline
+  getWikiGraph: (kbId: string) =>
+    request<{ nodes: Array<{ id: string; label: string; type: string; meta?: string; community?: number; communityLabel?: string }>; edges: Array<{ source: string; target: string; label: string; relation: string; weight: number; confidence: string; confidenceScore: number }>; communities?: Array<{ id: number; label: string; nodeCount: number; cohesion?: number }>; stats?: { totalNodes: number; totalEdges: number; totalCommunities: number; extractionMethod: string } }>(`/api/kb/${kbId}/wiki/graph`),
+  getWikiDeepGraph: (kbId: string) =>
+    request<{ nodes: Array<{ id: string; label: string; type: string; meta?: string; community?: number; communityLabel?: string }>; edges: Array<{ source: string; target: string; label: string; relation: string; weight: number; confidence: string; confidenceScore: number }>; communities: Array<{ id: number; label: string; nodeCount: number; cohesion?: number }>; stats: { totalNodes: number; totalEdges: number; totalCommunities: number; extractionMethod: string }; fallback?: boolean }>(`/api/kb/${kbId}/wiki/graph/deep`, { method: "POST" }),
+  getWikiTimeline: (kbId: string) =>
+    request<{ events: Array<{ id: string; timestamp: string; description: string; entity: string; confidence: string; source: string }> }>(`/api/kb/${kbId}/wiki/timeline`),
+
   // XLSX data tables
   listXlsxSheets: (kbId: string) =>
     request<SheetInfo[]>(`/api/kb/${kbId}/xlsx/sheets`),

@@ -140,8 +140,7 @@ export function runMigration001(db: Database): void {
       page_id,
       kb_id,
       level,
-      content,
-      tokenize 'unicode61'
+      content
     );
 
     CREATE INDEX idx_documents_kb_id ON documents(kb_id);

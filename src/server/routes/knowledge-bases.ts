@@ -21,14 +21,15 @@ import {
   updateWikiPage, deleteWikiPage,
 } from "../../wiki/page-manager.js";
 import { estimateTokensCJK } from "../../models/provider.js";
+import { DATA_DIR } from "../../paths.js";
 import {
   listSheetsByKb,
   getSheet,
   getColumnMetas,
   querySheetData,
 } from "../../store/data-tables.js";
-
-const DATA_DIR = join(process.cwd(), "data");
+import { buildWikiGraph, buildWikiTimeline } from "../../wiki/knowledge-graph.js";
+import { buildDeepGraph, getCachedGraphifyResult, getLocalGraphData } from "../../wiki/graphify-bridge.js";
 
 export const kbRoutes = new Hono();
 
@@ -104,7 +105,9 @@ kbRoutes.delete("/:kbId/documents/:docId", (c) => {
 kbRoutes.post("/:kbId/documents/:docId/retry", async (c) => {
   const doc = getDocument(c.req.param("docId"));
   if (!doc || doc.kbId !== c.req.param("kbId")) return c.json({ error: "Not found" }, 404);
-  if (doc.status !== "error") return c.json({ error: "Document is not in error state" }, 400);
+  if (doc.status !== "error" && doc.status !== "compiling" && doc.status !== "parsing") {
+    return c.json({ error: "Document is not in a retryable state" }, 400);
+  }
 
   triggerCompilation(doc.id, doc.kbId, doc.filename, doc.filePath || "").catch((err) => {
     console.error(`[Compile] Retry error for doc ${doc.id}:`, err);
@@ -168,6 +171,8 @@ kbRoutes.post("/:kbId/documents/upload", async (c) => {
 });
 
 async function triggerCompilation(docId: string, kbId: string, filename: string, filePath: string): Promise<void> {
+  console.log(`[Compile] Starting compilation for ${filename} (${docId})`);
+
   // Clean up any existing wiki pages for this doc before recompiling (prevents duplicates on retry)
   const existingPages = listWikiPagesByDoc(docId);
   for (const page of existingPages) {
@@ -218,20 +223,31 @@ async function triggerCompilation(docId: string, kbId: string, filename: string,
 
   updateDocumentStatus(docId, "compiling");
 
-  const result = await compileDocument({
-    kbId,
-    docId,
-    filename,
-    parsedContent,
-    onProgress: (stage) => console.log(`[Compile:${docId}] ${stage}`),
-  });
+  let result;
+  try {
+    result = await compileDocument({
+      kbId,
+      docId,
+      filename,
+      parsedContent,
+      onProgress: (stage) => console.log(`[Compile:${docId}] ${stage}`),
+    });
+  } catch (compileErr) {
+    console.error(`[Compile] compileDocument failed for ${docId}:`, compileErr);
+    updateDocumentStatus(docId, "error", { error: String(compileErr) });
+    return;
+  }
 
-  // Index pages into FTS
-  const pages = listWikiPagesByDoc(docId);
-  for (const page of pages) {
-    const content = getWikiPageContent(page);
-    const level = page.pageType === "abstract" ? "abstract" : page.pageType === "overview" ? "overview" : "fulltext";
-    indexPageInFts(page.id, kbId, level, content);
+  // Index pages into FTS (non-critical — don't fail compilation if FTS errors)
+  try {
+    const pages = listWikiPagesByDoc(docId);
+    for (const page of pages) {
+      const content = getWikiPageContent(page);
+      const level = page.pageType === "abstract" ? "abstract" : page.pageType === "overview" ? "overview" : "fulltext";
+      indexPageInFts(page.id, kbId, level, content);
+    }
+  } catch (ftsErr) {
+    console.warn(`[Compile] FTS indexing failed for ${docId} (non-fatal):`, ftsErr);
   }
 
   updateDocumentStatus(docId, "ready", {
@@ -242,6 +258,57 @@ async function triggerCompilation(docId: string, kbId: string, filename: string,
 
   console.log(`[Compile] Document ${docId} (${filename}) compiled successfully.`);
 }
+
+// ── Wiki Graph & Timeline ──────────────────────────────────────────────────
+
+kbRoutes.get("/:kbId/wiki/graph", (c) => {
+  const kbId = c.req.param("kbId");
+  if (!getKnowledgeBase(kbId)) return c.json({ error: "Knowledge base not found" }, 404);
+  const mode = c.req.query("mode") || "local";
+  try {
+    if (mode === "deep") {
+      // Return cached graphify result if available
+      const cached = getCachedGraphifyResult(kbId);
+      if (cached) return c.json(cached);
+    }
+    const graph = buildWikiGraph(kbId);
+    return c.json(graph);
+  } catch (err) {
+    console.error(`[Graph] Error building graph for KB ${kbId}:`, err);
+    return c.json({ error: "Failed to build graph" }, 500);
+  }
+});
+
+// Deep graph analysis using graphify (async, long-running)
+kbRoutes.post("/:kbId/wiki/graph/deep", async (c) => {
+  const kbId = c.req.param("kbId");
+  if (!getKnowledgeBase(kbId)) return c.json({ error: "Knowledge base not found" }, 404);
+
+  // Run in background
+  const result = await buildDeepGraph(kbId, (stage) => {
+    console.log(`[Graphify:${kbId}] ${stage}`);
+  });
+
+  if (!result) {
+    // Fall back to local extraction
+    const localData = getLocalGraphData(kbId);
+    return c.json({ ...localData, fallback: true });
+  }
+
+  return c.json(result);
+});
+
+kbRoutes.get("/:kbId/wiki/timeline", (c) => {
+  const kbId = c.req.param("kbId");
+  if (!getKnowledgeBase(kbId)) return c.json({ error: "Knowledge base not found" }, 404);
+  try {
+    const timeline = buildWikiTimeline(kbId);
+    return c.json(timeline);
+  } catch (err) {
+    console.error(`[Timeline] Error building timeline for KB ${kbId}:`, err);
+    return c.json({ error: "Failed to build timeline" }, 500);
+  }
+});
 
 // ── XLSX Data Tables ──────────────────────────────────────────────────────
 

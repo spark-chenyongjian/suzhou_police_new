@@ -1,9 +1,15 @@
 import { Hono } from "hono";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { getModelRouter } from "../../models/router.js";
+import { CONFIG_DIR } from "../../paths.js";
 
-const CONFIG_PATH = join(process.cwd(), "config", "model-config.yaml");
+const CONFIG_PATH = join(CONFIG_DIR, "model-config.yaml");
+
+// Ensure config directory exists
+if (!existsSync(CONFIG_DIR)) {
+  mkdirSync(CONFIG_DIR, { recursive: true });
+}
 
 export const settingsRoutes = new Hono();
 

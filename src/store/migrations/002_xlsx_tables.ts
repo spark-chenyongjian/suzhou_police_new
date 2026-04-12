@@ -61,8 +61,7 @@ export function runMigration002(db: Database): void {
       kb_id,
       col_name,
       cell_value,
-      row_id,
-      tokenize 'unicode61'
+      row_id
     );
   `);
 

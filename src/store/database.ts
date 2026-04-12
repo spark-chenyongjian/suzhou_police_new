@@ -3,6 +3,7 @@ import { mkdirSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { runMigration001 } from "./migrations/001_init.js";
 import { runMigration002 } from "./migrations/002_xlsx_tables.js";
+import { DATA_DIR } from "../paths.js";
 
 export class DB {
   private db: Database;
@@ -20,7 +21,7 @@ export class DB {
 
   static getInstance(dbPath?: string): DB {
     if (!DB.instance) {
-      const path = dbPath || join(process.cwd(), "data", "deepanalyze.db");
+      const path = dbPath || join(DATA_DIR, "deepanalyze.db");
       DB.instance = new DB(path);
     }
     return DB.instance;
