@@ -15,7 +15,7 @@ type WikiPageInfo = {
   id: string; title: string; pageType: string; docId: string | null; tokenCount: number | null; createdAt: string;
 };
 
-/* ── Toast ────────────────────────────────────────────────────────────── */
+/* ── Toast (纯 inline style，不依赖 Tailwind JIT 扫描) ──────────────── */
 let globalToastEl: HTMLDivElement | null = null;
 let globalToastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -23,33 +23,58 @@ function showToast(type: "success" | "error", msg: string) {
   if (!globalToastEl) return;
   clearTimeout(globalToastTimer);
   const el = globalToastEl;
-  el.className = `fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${
-    type === "success" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
-  }`;
-  el.innerHTML = "";
+  // 全部用 inline style，确保不被 Tailwind JIT 遗漏
+  Object.assign(el.style, {
+    display: "flex",
+    position: "fixed",
+    top: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: "99999",
+    alignItems: "center",
+    gap: "8px",
+    padding: "10px 20px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "#fff",
+    backgroundColor: type === "success" ? "#059669" : "#dc2626",
+    pointerEvents: "auto",
+    transition: "opacity 0.3s",
+    opacity: "1",
+  });
+  el.textContent = "";
   const icon = document.createElement("span");
-  icon.textContent = type === "success" ? "✓" : "✕";
+  icon.textContent = type === "success" ? "✓ " : "✕ ";
   el.appendChild(icon);
-  el.appendChild(document.createTextNode(" " + msg));
-  el.style.display = "flex";
-  globalToastTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
+  el.appendChild(document.createTextNode(msg));
+  globalToastTimer = setTimeout(() => {
+    el.style.opacity = "0";
+    setTimeout(() => { el.style.display = "none"; el.style.opacity = "1"; }, 350);
+  }, 3000);
 }
 
 export function ToastContainer() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { globalToastEl = ref.current; }, []);
-  return <div ref={ref} style={{ display: "none" }} />;
+  return <div ref={ref} style={{ display: "none", pointerEvents: "none" }} />;
 }
 
 /* ── Resizable Divider ────────────────────────────────────────────────── */
 function ResizableDivider({ onResize }: { onResize: (dx: number) => void }) {
   const dragging = useRef(false);
   const lastX = useRef(0);
+  const [hover, setHover] = useState(false);
+  const [active, setActive] = useState(false);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     dragging.current = true;
     lastX.current = e.clientX;
+    setActive(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
     const onMove = (ev: MouseEvent) => {
       if (!dragging.current) return;
       onResize(ev.clientX - lastX.current);
@@ -57,6 +82,9 @@ function ResizableDivider({ onResize }: { onResize: (dx: number) => void }) {
     };
     const onUp = () => {
       dragging.current = false;
+      setActive(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -67,8 +95,42 @@ function ResizableDivider({ onResize }: { onResize: (dx: number) => void }) {
   return (
     <div
       onMouseDown={onMouseDown}
-      className="w-1 shrink-0 cursor-col-resize bg-stone-200 hover:bg-emerald-400 active:bg-emerald-500 transition-colors"
-    />
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: active ? "5px" : "4px",
+        padding: "0 4px",
+        marginLeft: "-4px",
+        marginRight: "-4px",
+        boxSizing: "content-box",
+        cursor: "col-resize",
+        background: active
+          ? "#059669"
+          : hover
+            ? "#34d399"
+            : "#e7e5e4",
+        transition: "background 0.15s",
+        position: "relative",
+        zIndex: 10,
+      }}
+    >
+      {/* center grip line */}
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "2px",
+        height: "24px",
+        borderRadius: "1px",
+        background: active
+          ? "#fff"
+          : hover
+            ? "#059669"
+            : "#a8a29e",
+        transition: "background 0.15s",
+      }} />
+    </div>
   );
 }
 
