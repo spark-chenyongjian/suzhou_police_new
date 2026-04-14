@@ -215,14 +215,33 @@ async function triggerCompilation(docId: string, kbId: string, filename: string,
     const { readFileSync } = await import("fs");
     parsedContent = readFileSync(filePath, "utf-8");
   } else {
-    // Try Docling (if available)
+    // Try format-specific parsers first, then Docling as fallback
     try {
-      const { parseWithDocling } = await import("../../subprocess/docling-client.js");
-      const result = await parseWithDocling(filePath);
-      parsedContent = result.content;
-    } catch {
-      // Fallback: treat as unreadable binary
-      parsedContent = `# ${filename}\n\n*文档无法自动解析，请手动提供内容。*\n`;
+      if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+        // Image — VLM OCR / description
+        const { parseImage } = await import("../../parsers/image-parser.js");
+        console.log(`[Compile] Parsing image: ${filename}`);
+        parsedContent = await parseImage(filePath, filename);
+      } else if (["wav", "mp3", "m4a", "flac", "ogg", "aac", "opus"].includes(ext)) {
+        // Audio — DashScope speech-to-text
+        const { parseAudio } = await import("../../parsers/audio-parser.js");
+        console.log(`[Compile] Transcribing audio: ${filename}`);
+        parsedContent = await parseAudio(filePath, filename);
+      } else {
+        // PDF, DOCX, PPT, etc. — try Docling
+        try {
+          const { parseWithDocling } = await import("../../subprocess/docling-client.js");
+          console.log(`[Compile] Parsing document with Docling: ${filename}`);
+          const result = await parseWithDocling(filePath);
+          parsedContent = result.content;
+        } catch (doclingErr) {
+          console.error(`[Compile] Docling parsing failed for ${filename}:`, doclingErr instanceof Error ? doclingErr.message : String(doclingErr));
+          parsedContent = `# ${filename}\n\n*文档解析失败: ${doclingErr instanceof Error ? doclingErr.message : String(doclingErr)}。请检查 Docling 服务是否正常运行。*\n`;
+        }
+      }
+    } catch (parseErr) {
+      console.error(`[Compile] Parse error for ${filename}:`, parseErr instanceof Error ? parseErr.message : String(parseErr));
+      parsedContent = `# ${filename}\n\n*文件解析失败: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}*\n`;
     }
   }
 

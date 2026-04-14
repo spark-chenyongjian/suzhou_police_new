@@ -68,10 +68,9 @@ function ResizableDivider({ onResize }: { onResize: (dx: number) => void }) {
   const [hover, setHover] = useState(false);
   const [active, setActive] = useState(false);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
+  const startDrag = useCallback((startX: number) => {
     dragging.current = true;
-    lastX.current = e.clientX;
+    lastX.current = startX;
     setActive(true);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
@@ -94,40 +93,27 @@ function ResizableDivider({ onResize }: { onResize: (dx: number) => void }) {
 
   return (
     <div
-      onMouseDown={onMouseDown}
+      onMouseDown={(e) => { e.preventDefault(); startDrag(e.clientX); }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        width: active ? "5px" : "4px",
-        padding: "0 4px",
-        marginLeft: "-4px",
-        marginRight: "-4px",
-        boxSizing: "content-box",
+        width: "8px",
+        flexShrink: 0,
         cursor: "col-resize",
-        background: active
-          ? "#059669"
-          : hover
-            ? "#34d399"
-            : "#e7e5e4",
+        background: active ? "#059669" : hover ? "#a7f3d0" : "transparent",
         transition: "background 0.15s",
         position: "relative",
         zIndex: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      {/* center grip line */}
       <div style={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
         width: "2px",
         height: "24px",
         borderRadius: "1px",
-        background: active
-          ? "#fff"
-          : hover
-            ? "#059669"
-            : "#a8a29e",
+        background: active ? "#fff" : hover ? "#059669" : "#d6d3d1",
         transition: "background 0.15s",
       }} />
     </div>
@@ -285,7 +271,7 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* KB list sidebar */}
-      <div style={{ width: leftWidth, minWidth: 160, maxWidth: 400 }} className="border-r border-stone-200 bg-white flex flex-col shrink-0">
+      <div style={{ width: leftWidth, minWidth: 160, maxWidth: 400 }} className="bg-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between">
           <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">知识库</span>
           <button
@@ -428,7 +414,7 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
                   {isUploading ? <Loader2Icon size={14} className="animate-spin" /> : <UploadIcon size={14} />}
                   上传文件
                   <input type="file" className="hidden" multiple onChange={handleUpload} disabled={isUploading}
-                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.xlsx,.csv" />
+                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.webp,.bmp,.wav,.mp3,.m4a,.flac,.ogg,.aac" />
                 </label>
                 {/* Upload folder */}
                 <button

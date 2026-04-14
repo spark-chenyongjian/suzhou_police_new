@@ -21,9 +21,14 @@ export async function startDocling(baseDir?: string): Promise<SubprocessManager>
   const dir = baseDir || process.cwd();
   const svcDir = join(dir, "docling-service");
 
+  // Prefer venv Python if available
+  const venvPython = join(svcDir, ".venv", "bin", "python3");
+  const { existsSync } = await import("fs");
+  const pythonBin = existsSync(venvPython) ? venvPython : "python3";
+
   _mgr = new SubprocessManager();
-  await _mgr.start(PROCESS_NAME, ["python3", "main.py"], svcDir);
-  console.log("[Docling] Subprocess started.");
+  await _mgr.start(PROCESS_NAME, [pythonBin, "main.py"], svcDir);
+  console.log(`[Docling] Subprocess started (python: ${pythonBin}).`);
   return _mgr;
 }
 
