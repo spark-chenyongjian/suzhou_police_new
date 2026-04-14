@@ -101,7 +101,7 @@ export function MarkdownView({ content, className = "" }: Props) {
         i++;
       }
       elements.push(
-        <blockquote key={i} className="border-l-4 border-blue-300 pl-4 my-3 italic text-gray-600 text-sm">
+        <blockquote key={i} className="border-l-4 border-emerald-300 pl-4 my-3 italic text-stone-600 text-sm">
           {quoteLines.map((ql, j) => <p key={j}>{renderInline(ql)}</p>)}
         </blockquote>
       );
@@ -158,7 +158,7 @@ function renderInline(text: string): React.ReactNode {
       );
     } else if (match[0].startsWith("[")) {
       parts.push(
-        <a key={match.index} href={match[6]} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+        <a key={match.index} href={match[6]} className="text-emerald-600 hover:underline" target="_blank" rel="noopener noreferrer">
           {match[5]}
         </a>
       );

@@ -5,7 +5,7 @@ models:
   main:
     provider: openai-compatible
     endpoint: https://coding.dashscope.aliyuncs.com/v1
-    apiKey: sk-sp-c8a9e3998a15481b8c068dd0ece39755
+    apiKey: sk-3c7e18f1cecb4e21b71be9ded03ad155
     model: qwen3.5-plus
     maxTokens: 32768
     supportsToolUse: true

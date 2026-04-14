@@ -63,10 +63,10 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+    <div className="flex-1 flex flex-col overflow-hidden bg-stone-50">
       {/* Header */}
-      <div className="h-14 border-b border-gray-200 bg-white flex items-center px-6 shrink-0">
-        <h1 className="text-base font-semibold text-gray-900">系统设置</h1>
+      <div className="h-14 border-b border-stone-200 bg-white flex items-center px-6 shrink-0">
+        <h1 className="text-base font-semibold text-stone-900">系统设置</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -90,7 +90,7 @@ export function SettingsPage() {
                 <Stat label="最后更新" value={new Date(health.timestamp).toLocaleTimeString("zh-CN")} />
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
+              <div className="flex items-center gap-2 text-sm text-stone-400">
                 <Loader2Icon size={14} className="animate-spin" />
                 连接中...
               </div>
@@ -99,12 +99,12 @@ export function SettingsPage() {
 
           {/* Model Config */}
           <Section
-            icon={<BrainCircuitIcon size={17} className="text-blue-500" />}
+            icon={<BrainCircuitIcon size={17} className="text-emerald-500" />}
             title="大模型配置"
             hint="保存后立即生效，无需重启"
           >
             {isLoadingConfig ? (
-              <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+              <div className="flex items-center gap-2 text-sm text-stone-400 py-2">
                 <Loader2Icon size={14} className="animate-spin" />
                 加载配置...
               </div>
@@ -146,7 +146,7 @@ export function SettingsPage() {
                         ? "bg-emerald-500 text-white"
                         : saveResult === "error"
                         ? "bg-red-500 text-white"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
                     } disabled:opacity-60`}
                   >
                     {isSaving ? (
@@ -171,17 +171,17 @@ export function SettingsPage() {
             title="已加载插件"
           >
             <div className="space-y-2">
-              <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center gap-3 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg">
                 <CircleCheckBigIcon size={15} className="text-emerald-500 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800">judicial-evidence</p>
-                  <p className="text-xs text-gray-500">司法证据分析插件</p>
+                  <p className="text-sm font-medium text-stone-800">judicial-evidence</p>
+                  <p className="text-xs text-stone-500">司法证据分析插件</p>
                 </div>
-                <span className="text-xs text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-full">v1.0</span>
+                <span className="text-xs text-stone-400 bg-white border border-stone-200 px-2 py-0.5 rounded-full">v1.0</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                在 <code className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">plugins/</code> 目录添加{" "}
-                <code className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">plugin.yaml</code> 即可扩展场景
+              <p className="text-xs text-stone-400 mt-1">
+                在 <code className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">plugins/</code> 目录添加{" "}
+                <code className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">plugin.yaml</code> 即可扩展场景
               </p>
             </div>
           </Section>
@@ -219,11 +219,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100">
+    <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-stone-100">
         {icon}
-        <h2 className="text-sm font-semibold text-gray-800 flex-1">{title}</h2>
-        {hint && <span className="text-xs text-gray-400">{hint}</span>}
+        <h2 className="text-sm font-semibold text-stone-800 flex-1">{title}</h2>
+        {hint && <span className="text-xs text-stone-400">{hint}</span>}
         {badge}
       </div>
       <div className="px-5 py-4">{children}</div>
@@ -233,9 +233,9 @@ function Section({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-      <p className="text-sm font-medium text-gray-800">{value}</p>
+    <div className="bg-stone-50 rounded-lg px-3 py-2.5">
+      <p className="text-xs text-stone-400 mb-0.5">{label}</p>
+      <p className="text-sm font-medium text-stone-800">{value}</p>
     </div>
   );
 }
@@ -257,15 +257,15 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-stone-600 mb-1.5">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-300 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-900 placeholder-stone-300 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
       />
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-stone-400 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -273,8 +273,8 @@ function Field({
 function StorageRow({ label, path }: { label: string; path: string }) {
   return (
     <div className="flex items-center justify-between py-1.5">
-      <span className="text-sm text-gray-500">{label}</span>
-      <code className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2 py-1 rounded">{path}</code>
+      <span className="text-sm text-stone-500">{label}</span>
+      <code className="text-xs text-stone-600 bg-stone-50 border border-stone-200 px-2 py-1 rounded">{path}</code>
     </div>
   );
 }

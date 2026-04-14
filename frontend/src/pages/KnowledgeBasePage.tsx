@@ -123,7 +123,7 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
   };
 
   const statusIcon = (status: string) => {
-    if (status === "ready") return <CheckCircle2Icon size={14} className="text-green-500" />;
+    if (status === "ready") return <CheckCircle2Icon size={14} className="text-emerald-500" />;
     if (status === "error") return <AlertCircleIcon size={14} className="text-red-500" />;
     return <Loader2Icon size={14} className="animate-spin text-amber-500" />;
   };
@@ -137,12 +137,12 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* KB list sidebar */}
-      <div className="w-56 border-r border-gray-200 bg-white flex flex-col shrink-0">
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">知识库</span>
+      <div className="w-56 border-r border-stone-200 bg-white flex flex-col shrink-0">
+        <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between">
+          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">知识库</span>
           <button
             onClick={() => setShowNewKbInput((v) => !v)}
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+            className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
           >
             <PlusIcon size={13} />
             新建
@@ -150,7 +150,7 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
         </div>
 
         {showNewKbInput && (
-          <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex gap-2">
+          <div className="px-3 py-2 border-b border-stone-200 bg-stone-50 flex gap-2">
             <input
               autoFocus
               value={newKbName}
@@ -160,12 +160,12 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
                 if (e.key === "Escape") { setShowNewKbInput(false); setNewKbName(""); }
               }}
               placeholder="知识库名称..."
-              className="flex-1 text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 text-gray-800"
+              className="flex-1 text-sm border border-stone-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 text-stone-800"
             />
             <button
               onClick={handleCreateKb}
               disabled={isCreating || !newKbName.trim()}
-              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg text-white text-xs font-medium"
+              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 rounded-lg text-white text-xs font-medium"
             >
               {isCreating ? "..." : "创建"}
             </button>
@@ -185,12 +185,12 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
                       if (e.key === "Enter") handleRename(kb.id);
                       if (e.key === "Escape") setRenamingKbId(null);
                     }}
-                    className="flex-1 text-sm border border-blue-400 rounded px-2 py-1 outline-none text-gray-800"
+                    className="flex-1 text-sm border border-emerald-400 rounded px-2 py-1 outline-none text-stone-800"
                   />
-                  <button onClick={() => handleRename(kb.id)} className="text-blue-600 hover:text-blue-700">
+                  <button onClick={() => handleRename(kb.id)} className="text-emerald-600 hover:text-emerald-700">
                     <CheckCircle2Icon size={14} />
                   </button>
-                  <button onClick={() => setRenamingKbId(null)} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={() => setRenamingKbId(null)} className="text-stone-400 hover:text-stone-600">
                     <XIcon size={14} />
                   </button>
                 </div>
@@ -199,25 +199,25 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
                   onClick={() => { setSelectedKb(kb); onKbChange?.(kb.id); }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors group ${
                     selectedKb?.id === kb.id
-                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
-                      : "text-gray-700 hover:bg-gray-50"
+                      ? "bg-emerald-50 text-emerald-700 border-r-2 border-emerald-600"
+                      : "text-stone-700 hover:bg-stone-50"
                   }`}
                 >
-                  <DatabaseIcon size={14} className={`shrink-0 ${selectedKb?.id === kb.id ? "text-blue-500" : "text-gray-400"}`} />
+                  <DatabaseIcon size={14} className={`shrink-0 ${selectedKb?.id === kb.id ? "text-emerald-500" : "text-stone-400"}`} />
                   <span className="truncate flex-1 font-medium">{kb.name}</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowMenuId(kb.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-stone-200 text-stone-400 hover:text-stone-600 transition-opacity"
                   >
                     <MoreHorizontalIcon size={14} />
                   </button>
                 </button>
               )}
               {showMenuId === kb.id && (
-                <div ref={menuRef} className="absolute right-2 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-32">
+                <div ref={menuRef} className="absolute right-2 top-8 z-50 bg-white border border-stone-200 rounded-lg shadow-lg py-1 w-32">
                   <button
                     onClick={() => { setRenamingKbId(kb.id); setRenameValue(kb.name); setShowMenuId(null); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
                   >
                     <PencilIcon size={13} />重命名
                   </button>
@@ -233,8 +233,8 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
           ))}
           {kbs.length === 0 && !showNewKbInput && (
             <div className="text-center py-10">
-              <DatabaseIcon size={28} className="mx-auto text-gray-300 mb-2" />
-              <p className="text-xs text-gray-400">点击"新建"创建知识库</p>
+              <DatabaseIcon size={28} className="mx-auto text-stone-300 mb-2" />
+              <p className="text-xs text-stone-400">点击"新建"创建知识库</p>
             </div>
           )}
         </div>
@@ -245,22 +245,22 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
         {!selectedKb ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <DatabaseIcon size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm font-medium">选择或创建一个知识库</p>
+              <DatabaseIcon size={48} className="mx-auto text-stone-300 mb-3" />
+              <p className="text-stone-500 text-sm font-medium">选择或创建一个知识库</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-stone-200 bg-white flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-gray-900">{selectedKb.name}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h2 className="text-base font-semibold text-stone-900">{selectedKb.name}</h2>
+                <p className="text-xs text-stone-500 mt-0.5">
                   {docs.length} 个文档 · {docs.filter((d) => d.status === "ready").length} 个就绪
                   {wikiPageCount > 0 && ` · ${wikiPageCount} 个Wiki页面`}
                 </p>
               </div>
               <label className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg cursor-pointer transition-colors ${
-                isUploading ? "bg-gray-100 text-gray-400" : "bg-blue-600 hover:bg-blue-700 text-white"
+                isUploading ? "bg-stone-100 text-stone-400" : "bg-emerald-600 hover:bg-emerald-700 text-white"
               }`}>
                 {isUploading ? <Loader2Icon size={14} className="animate-spin" /> : <UploadIcon size={14} />}
                 上传文档
@@ -269,7 +269,7 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
               </label>
             </div>
 
-            <div className="px-6 border-b border-gray-200 bg-white flex gap-6">
+            <div className="px-6 border-b border-stone-200 bg-white flex gap-6">
               {[
                 { key: "docs" as const, label: "文档管理", icon: <FileTextIcon size={13} /> },
                 { key: "wiki" as const, label: "Wiki浏览", icon: <BookOpenIcon size={13} /> },
@@ -279,8 +279,8 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
                   onClick={() => setActiveTab(key)}
                   className={`flex items-center gap-1.5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
                     activeTab === key
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      ? "border-emerald-600 text-emerald-600"
+                      : "border-transparent text-stone-500 hover:text-stone-700"
                   }`}
                 >
                   {icon}{label}
@@ -288,24 +288,24 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-6 bg-stone-50">
               {activeTab === "docs" ? (
                 docs.length === 0 ? (
                   <div className="text-center py-16">
-                    <FileTextIcon size={40} className="mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500 text-sm">暂无文档，点击"上传文档"开始</p>
-                    <p className="text-xs text-gray-400 mt-1">支持 PDF、Word、PPT、Markdown、Excel 等格式</p>
+                    <FileTextIcon size={40} className="mx-auto text-stone-300 mb-3" />
+                    <p className="text-stone-500 text-sm">暂无文档，点击"上传文档"开始</p>
+                    <p className="text-xs text-stone-400 mt-1">支持 PDF、Word、PPT、Markdown、Excel 等格式</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {docs.map((doc) => (
-                      <div key={doc.id} className="bg-white border border-gray-200 rounded-xl px-5 py-3.5 flex items-center gap-4 hover:border-gray-300 transition-colors group">
-                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                          <FileTextIcon size={17} className="text-blue-500" />
+                      <div key={doc.id} className="bg-white border border-stone-200 rounded-xl px-5 py-3.5 flex items-center gap-4 hover:border-stone-300 transition-colors group">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                          <FileTextIcon size={17} className="text-emerald-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{doc.filename}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <p className="text-sm font-medium text-stone-900 truncate">{doc.filename}</p>
+                          <p className="text-xs text-stone-400 mt-0.5">
                             {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
                             {" · "}
                             {new Date(doc.createdAt.replace(" ", "T") + "Z").toLocaleString("zh-CN")}
@@ -315,21 +315,21 @@ export function KnowledgeBasePage({ kbId: initialKbId, onKbChange }: Props) {
                           <div className="flex items-center gap-1.5 text-xs">
                             {statusIcon(doc.status)}
                             <span className={
-                              doc.status === "ready" ? "text-green-600" :
+                              doc.status === "ready" ? "text-emerald-600" :
                               doc.status === "error" ? "text-red-600" : "text-amber-600"
                             }>{statusLabel[doc.status] || doc.status}</span>
                           </div>
                           {doc.status === "error" && (
                             <button
                               onClick={() => handleRetry(doc)}
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50"
+                              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50"
                             >
                               <RefreshCwIcon size={11} />重试
                             </button>
                           )}
                           <button
                             onClick={() => handleDeleteDoc(doc)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-500 transition-all"
                           >
                             <Trash2Icon size={14} />
                           </button>
@@ -380,12 +380,12 @@ function WikiBrowser({ kbId }: { kbId: string }) {
 
   const badge = (pageType: string) => {
     switch (pageType) {
-      case "abstract": return { label: "L0 摘要", cls: "bg-green-100 text-green-700" };
-      case "overview": return { label: "L1 概览", cls: "bg-blue-100 text-blue-700" };
-      case "fulltext": return { label: "L2 全文", cls: "bg-purple-100 text-purple-700" };
+      case "abstract": return { label: "L0 摘要", cls: "bg-emerald-100 text-emerald-700" };
+      case "overview": return { label: "L1 概览", cls: "bg-sky-100 text-sky-700" };
+      case "fulltext": return { label: "L2 全文", cls: "bg-violet-100 text-violet-700" };
       case "entity":  return { label: "实体", cls: "bg-amber-100 text-amber-700" };
-      case "report":  return { label: "报告", cls: "bg-emerald-100 text-emerald-700" };
-      default: return { label: pageType, cls: "bg-gray-100 text-gray-600" };
+      case "report":  return { label: "报告", cls: "bg-teal-100 text-teal-700" };
+      default: return { label: pageType, cls: "bg-stone-100 text-stone-600" };
     }
   };
 
@@ -405,8 +405,8 @@ function WikiBrowser({ kbId }: { kbId: string }) {
   if (pages.length === 0) {
     return (
       <div className="text-center py-16">
-        <BookOpenIcon size={40} className="mx-auto text-gray-300 mb-3" />
-        <p className="text-gray-500 text-sm">暂无Wiki页面，请先上传并编译文档</p>
+        <BookOpenIcon size={40} className="mx-auto text-stone-300 mb-3" />
+        <p className="text-stone-500 text-sm">暂无Wiki页面，请先上传并编译文档</p>
       </div>
     );
   }
@@ -423,8 +423,8 @@ function WikiBrowser({ kbId }: { kbId: string }) {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 filter === f
-                  ? "bg-blue-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300"
               }`}
             >
               {typeFilter[f]}
@@ -437,7 +437,7 @@ function WikiBrowser({ kbId }: { kbId: string }) {
             const firstName = docPages[0]?.title.replace(/^\[L[012]\] /, "") ?? docId.slice(0, 8);
             return (
               <div key={docId}>
-                <p className="text-xs font-medium text-gray-500 mb-1.5 truncate" title={firstName}>{firstName}</p>
+                <p className="text-xs font-medium text-stone-500 mb-1.5 truncate" title={firstName}>{firstName}</p>
                 <div className="space-y-1">
                   {docPages.map((p) => {
                     const b = badge(p.pageType);
@@ -447,19 +447,19 @@ function WikiBrowser({ kbId }: { kbId: string }) {
                         onClick={() => loadPage(p.id)}
                         className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${
                           selected === p.id
-                            ? "bg-blue-50 border border-blue-200"
-                            : "bg-white border border-gray-200 hover:border-gray-300"
+                            ? "bg-emerald-50 border border-emerald-200"
+                            : "bg-white border border-stone-200 hover:border-stone-300"
                         }`}
                       >
                         <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 mt-0.5 ${b.cls}`}>
                           {b.label}
                         </span>
                         <div className="min-w-0">
-                          <p className="text-xs font-medium text-gray-800 truncate">
+                          <p className="text-xs font-medium text-stone-800 truncate">
                             {p.title.replace(/^\[L[012]\] /, "")}
                           </p>
                           {p.tokenCount && (
-                            <p className="text-xs text-gray-400 mt-0.5">~{p.tokenCount.toLocaleString()} tokens</p>
+                            <p className="text-xs text-stone-400 mt-0.5">~{p.tokenCount.toLocaleString()} tokens</p>
                           )}
                         </div>
                       </button>
@@ -471,7 +471,7 @@ function WikiBrowser({ kbId }: { kbId: string }) {
           })}
           {ungrouped.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-1.5">其他</p>
+              <p className="text-xs font-medium text-stone-500 mb-1.5">其他</p>
               <div className="space-y-1">
                 {ungrouped.map((p) => {
                   const b = badge(p.pageType);
@@ -480,11 +480,11 @@ function WikiBrowser({ kbId }: { kbId: string }) {
                       key={p.id}
                       onClick={() => loadPage(p.id)}
                       className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                        selected === p.id ? "bg-blue-50 border border-blue-200" : "bg-white border border-gray-200 hover:border-gray-300"
+                        selected === p.id ? "bg-emerald-50 border border-emerald-200" : "bg-white border border-stone-200 hover:border-stone-300"
                       }`}
                     >
                       <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 mt-0.5 ${b.cls}`}>{b.label}</span>
-                      <p className="text-xs font-medium text-gray-800 truncate">{p.title}</p>
+                      <p className="text-xs font-medium text-stone-800 truncate">{p.title}</p>
                     </button>
                   );
                 })}
@@ -495,15 +495,15 @@ function WikiBrowser({ kbId }: { kbId: string }) {
       </div>
 
       {/* Right: content */}
-      <div className="flex-1 bg-white border border-gray-200 rounded-xl p-6 overflow-y-auto">
+      <div className="flex-1 bg-white border border-stone-200 rounded-xl p-6 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center gap-2 text-gray-400 text-sm py-8 justify-center">
+          <div className="flex items-center gap-2 text-stone-400 text-sm py-8 justify-center">
             <Loader2Icon size={16} className="animate-spin" />加载中...
           </div>
         ) : content ? (
-          <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{content}</pre>
+          <pre className="text-sm text-stone-800 whitespace-pre-wrap font-sans leading-relaxed">{content}</pre>
         ) : (
-          <p className="text-gray-400 text-sm text-center py-8">选择左侧Wiki页面查看内容</p>
+          <p className="text-stone-400 text-sm text-center py-8">选择左侧Wiki页面查看内容</p>
         )}
       </div>
     </div>

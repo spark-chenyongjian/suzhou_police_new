@@ -20,9 +20,9 @@ export function App() {
   const [nav, setNav] = useState<NavState>({ page: "chat", kbId: null });
 
   return (
-    <div className="h-screen flex bg-slate-950 text-white overflow-hidden">
+    <div className="h-screen flex bg-stone-100 overflow-hidden">
       <AppSidebar nav={nav} onNavigate={setNav} />
-      <main className="flex-1 flex overflow-hidden bg-gray-50 text-gray-900">
+      <main className="flex-1 flex overflow-hidden bg-stone-50 text-stone-900">
         {nav.page === "chat" && <ChatPage kbId={nav.kbId} />}
         {nav.page === "kb" && <KnowledgeBasePage kbId={nav.kbId} onKbChange={(id) => setNav({ page: "kb", kbId: id })} />}
         {nav.page === "reports" && <ReportsPage kbId={nav.kbId} />}

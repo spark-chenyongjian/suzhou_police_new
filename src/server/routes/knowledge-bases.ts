@@ -135,8 +135,13 @@ kbRoutes.post("/:kbId/documents/upload", async (c) => {
   if (!kb) return c.json({ error: "Knowledge base not found" }, 404);
 
   // Parse multipart form
-  const form = await c.req.formData();
-  const file = form.get("file") as File | null;
+  let file: File | null;
+  try {
+    const form = await c.req.formData();
+    file = form.get("file") as File | null;
+  } catch {
+    return c.json({ error: "No file provided" }, 400);
+  }
   if (!file) return c.json({ error: "No file provided" }, 400);
 
   const bytes = await file.arrayBuffer();

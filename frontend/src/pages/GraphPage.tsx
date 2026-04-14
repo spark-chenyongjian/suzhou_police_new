@@ -231,34 +231,32 @@ export function GraphPage({ kbId }: Props) {
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    // Color map by type or community
+    // Color map by type — warm earth-tone palette matching the reference UI
     const communityColors = [
-      "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-      "#06b6d4", "#f97316", "#ec4899", "#14b8a6", "#a855f7",
+      "#059669", "#d97706", "#dc2626", "#7c3aed", "#0891b2",
+      "#ea580c", "#db2777", "#0d9488", "#9333ea", "#65a30d",
     ];
     const typeColors: Record<string, string> = {
-      document: "#3b82f6",
-      entity: "#10b981",
-      heading: "#f59e0b",
-      person: "#ef4444",
-      org: "#8b5cf6",
-      location: "#06b6d4",
-      money: "#f97316",
-      keyword: "#10b981",
+      document: "#059669",
+      entity: "#0891b2",
+      heading: "#d97706",
+      person: "#dc2626",
+      org: "#7c3aed",
+      location: "#0d9488",
+      money: "#ea580c",
+      keyword: "#059669",
     };
 
     // Build community color lookup
     const nodeColorMap = new Map<string, string>();
     if (communities.length > 0) {
-      // Use community colors when communities exist
       for (const n of nodes) {
-        // Match with API response nodes to get community
-        nodeColorMap.set(n.id, typeColors[n.type] || "#3b82f6");
+        nodeColorMap.set(n.id, typeColors[n.type] || "#059669");
       }
     }
 
     // Draw edges
-    ctx.strokeStyle = "#cbd5e1";
+    ctx.strokeStyle = "#d6d3d1";
     ctx.lineWidth = 1;
     ctx.font = "10px sans-serif";
     for (const edge of edges) {
@@ -272,7 +270,7 @@ export function GraphPage({ kbId }: Props) {
       if (edge.label && zoom > 0.6) {
         const mx = cx + (s.x + t.x) / 2 * zoom;
         const my = cy + (s.y + t.y) / 2 * zoom;
-        ctx.fillStyle = "#94a3b8";
+        ctx.fillStyle = "#78716c";
         ctx.textAlign = "center";
         ctx.fillText(edge.label.slice(0, 12), mx, my - 3);
       }
@@ -283,7 +281,7 @@ export function GraphPage({ kbId }: Props) {
       const x = cx + node.x * zoom;
       const y = cy + node.y * zoom;
       const isSelected = selectedNode?.id === node.id;
-      const color = typeColors[node.type] || "#3b82f6";
+      const color = typeColors[node.type] || "#059669";
       const radius = node.type === "document" ? 8 : 5;
 
       // Highlight ring for selected
@@ -304,7 +302,7 @@ export function GraphPage({ kbId }: Props) {
 
       // Label
       if (zoom > 0.4) {
-        ctx.fillStyle = "#1e293b";
+        ctx.fillStyle = "#292524";
         ctx.font = `${Math.max(9, (node.type === "document" ? 12 : 10) * zoom)}px sans-serif`;
         ctx.textAlign = "center";
         ctx.fillText(node.label.slice(0, 15), x, y - (radius + 3) * zoom);
@@ -326,7 +324,7 @@ export function GraphPage({ kbId }: Props) {
       ctx.beginPath();
       ctx.arc(15, ly, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#64748b";
+      ctx.fillStyle = "#78716c";
       ctx.textAlign = "left";
       ctx.fillText(item.label, 25, ly + 4);
       ly += 18;
@@ -366,9 +364,9 @@ export function GraphPage({ kbId }: Props) {
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Left: Config */}
-      <div className="w-72 border-r border-gray-200 bg-white flex flex-col shrink-0">
-        <div className="px-4 py-3 border-b border-gray-200">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">知识库</label>
+      <div className="w-72 border-r border-stone-200 bg-white flex flex-col shrink-0">
+        <div className="px-4 py-3 border-b border-stone-200">
+          <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">知识库</label>
           <select value={selectedKbId || ""} onChange={(e) => {
             const val = e.target.value || null;
             setSelectedKbId(val);
@@ -376,25 +374,25 @@ export function GraphPage({ kbId }: Props) {
             setNodes([]);
             setSelectedNode(null);
           }}
-            className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+            className="w-full text-sm border border-stone-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 bg-white">
             <option value="">选择知识库...</option>
             {kbs.map((kb) => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
           </select>
         </div>
 
         {selectedKbId && (
-          <div className="px-4 py-3 border-b border-gray-200">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">数据来源</label>
+          <div className="px-4 py-3 border-b border-stone-200">
+            <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">数据来源</label>
             <div className="flex gap-1">
               <button onClick={() => { setDataSource("wiki"); setNodes([]); setSelectedNode(null); }}
                 className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
-                  dataSource === "wiki" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  dataSource === "wiki" ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                 }`}>
                 <FileTextIcon size={12} /> Wiki 文档
               </button>
               <button onClick={() => { setDataSource("xlsx"); setNodes([]); setSelectedNode(null); }}
                 className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
-                  dataSource === "xlsx" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  dataSource === "xlsx" ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                 }`}>
                 <TableIcon size={12} /> Excel 表格
               </button>
@@ -404,40 +402,40 @@ export function GraphPage({ kbId }: Props) {
 
         {selectedKbId && dataSource === "xlsx" && (
           <>
-            <div className="px-4 py-3 border-b border-gray-200">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">数据表</label>
+            <div className="px-4 py-3 border-b border-stone-200">
+              <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">数据表</label>
               <select value={selectedSheetId || ""} onChange={(e) => { setSelectedSheetId(e.target.value || null); setNodes([]); }}
-                className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                className="w-full text-sm border border-stone-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 bg-white">
                 <option value="">选择工作表...</option>
                 {sheets.map((s) => <option key={s.id} value={s.id}>{s.sheetName} ({s.rowCount}行)</option>)}
               </select>
             </div>
             {sheet && (
-              <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+              <div className="px-4 py-3 border-b border-stone-200 space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">实体列 A</label>
+                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">实体列 A</label>
                   <select value={col1 || ""} onChange={(e) => setCol1(e.target.value)}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                    className="w-full text-sm border border-stone-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 bg-white">
                     {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">实体列 B</label>
+                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">实体列 B</label>
                   <select value={col2 || ""} onChange={(e) => setCol2(e.target.value)}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                    className="w-full text-sm border border-stone-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 bg-white">
                     {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">关系标签列 (可选)</label>
+                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">关系标签列 (可选)</label>
                   <select value={relationCol || ""} onChange={(e) => setRelationCol(e.target.value || null)}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 bg-white">
+                    className="w-full text-sm border border-stone-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 bg-white">
                     <option value="">无</option>
                     {sheet.headerRow.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
                 <button onClick={buildXlsxGraph} disabled={!col1 || !col2 || isLoading}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors">
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 text-white text-sm font-medium rounded-lg transition-colors">
                   {isLoading ? <Loader2Icon size={14} className="animate-spin inline mr-1" /> : <GitBranchIcon size={14} className="inline mr-1" />}
                   生成关系图谱
                 </button>
@@ -447,30 +445,30 @@ export function GraphPage({ kbId }: Props) {
         )}
 
         {selectedKbId && dataSource === "wiki" && (
-          <div className="px-4 py-3 border-b border-gray-200">
-            <p className="text-xs text-gray-500 mb-2">从 Wiki 文档中自动提取实体和关系。</p>
+          <div className="px-4 py-3 border-b border-stone-200">
+            <p className="text-xs text-stone-500 mb-2">从 Wiki 文档中自动提取实体和关系。</p>
             <div className="space-y-2">
               <button onClick={() => loadWikiGraph(false)} disabled={isLoading}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors">
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 text-white text-sm font-medium rounded-lg transition-colors">
                 {isLoading ? <Loader2Icon size={14} className="animate-spin inline mr-1" /> : <GitBranchIcon size={14} className="inline mr-1" />}
                 快速提取
               </button>
               <button onClick={() => loadWikiGraph(true)} disabled={isLoading}
-                className="w-full py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors">
+                className="w-full py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-stone-300 text-white text-sm font-medium rounded-lg transition-colors">
                 {isLoading ? <Loader2Icon size={14} className="animate-spin inline mr-1" /> : <GitBranchIcon size={14} className="inline mr-1" />}
                 深度分析 (Graphify)
               </button>
             </div>
             {extractionMethod === "graphify" && (
-              <p className="text-xs text-purple-600 mt-2">使用 Graphify 语义提取 + 社区检测</p>
+              <p className="text-xs text-violet-600 mt-2">使用 Graphify 语义提取 + 社区检测</p>
             )}
             {communities.length > 0 && (
               <div className="mt-2">
-                <p className="text-xs font-semibold text-gray-500 mb-1">社区聚类 ({communities.length})</p>
+                <p className="text-xs font-semibold text-stone-500 mb-1">社区聚类 ({communities.length})</p>
                 <ul className="space-y-1 max-h-32 overflow-y-auto">
                   {communities.slice(0, 10).map((c) => (
-                    <li key={c.id} className="text-xs text-gray-600 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"][c.id % 5] }} />
+                    <li key={c.id} className="text-xs text-stone-600 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ["#059669","#d97706","#dc2626","#7c3aed","#0891b2"][c.id % 5] }} />
                       <span className="truncate">{c.label} ({c.nodeCount})</span>
                     </li>
                   ))}
@@ -481,7 +479,7 @@ export function GraphPage({ kbId }: Props) {
         )}
 
         {nodes.length > 0 && (
-          <div className="px-4 py-3 text-xs text-gray-500 border-b border-gray-200">
+          <div className="px-4 py-3 text-xs text-stone-500 border-b border-stone-200">
             {nodes.length} 个节点，{edges.length} 条关系
           </div>
         )}
@@ -489,22 +487,22 @@ export function GraphPage({ kbId }: Props) {
         {/* Node detail panel */}
         {selectedNode && (
           <div className="px-4 py-3 flex-1 overflow-y-auto">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2">{selectedNode.label}</h4>
-            <p className="text-xs text-gray-500 mb-2">
-              类型: <span className="font-medium text-gray-700">{selectedNode.type === "document" ? "文档" : selectedNode.type === "org" ? "机构" : selectedNode.type === "location" ? "地点" : selectedNode.type === "money" ? "金额" : selectedNode.type === "keyword" ? "关键词" : selectedNode.type}</span>
+            <h4 className="text-sm font-semibold text-stone-800 mb-2">{selectedNode.label}</h4>
+            <p className="text-xs text-stone-500 mb-2">
+              类型: <span className="font-medium text-stone-700">{selectedNode.type === "document" ? "文档" : selectedNode.type === "org" ? "机构" : selectedNode.type === "location" ? "地点" : selectedNode.type === "money" ? "金额" : selectedNode.type === "keyword" ? "关键词" : selectedNode.type}</span>
             </p>
             {connectedEdges.length > 0 && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">关联 ({connectedEdges.length}):</p>
+                <p className="text-xs text-stone-500 mb-1">关联 ({connectedEdges.length}):</p>
                 <ul className="space-y-1">
                   {connectedEdges.slice(0, 20).map((e, i) => {
                     const otherId = e.source === selectedNode.id ? e.target : e.source;
                     const otherNode = nodes.find((n) => n.id === otherId);
                     return (
-                      <li key={i} className="text-xs text-gray-600 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                      <li key={i} className="text-xs text-stone-600 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                         <span className="truncate">{otherNode?.label || otherId}</span>
-                        {e.label && <span className="text-gray-400 text-[10px] shrink-0">({e.label})</span>}
+                        {e.label && <span className="text-stone-400 text-[10px] shrink-0">({e.label})</span>}
                       </li>
                     );
                   })}
@@ -520,19 +518,19 @@ export function GraphPage({ kbId }: Props) {
         {nodes.length === 0 && !isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <GitBranchIcon size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm font-medium">选择知识库自动生成知识图谱</p>
-              <p className="text-gray-400 text-xs mt-1">支持 Wiki 文档和 Excel 数据两种来源</p>
+              <GitBranchIcon size={48} className="mx-auto text-stone-300 mb-3" />
+              <p className="text-stone-500 text-sm font-medium">选择知识库自动生成知识图谱</p>
+              <p className="text-stone-400 text-xs mt-1">支持 Wiki 文档和 Excel 数据两种来源</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="h-10 border-b border-gray-200 flex items-center px-4 gap-2 shrink-0">
-              <button onClick={() => setZoom((z) => Math.min(z * 1.3, 5))} className="p-1.5 rounded hover:bg-gray-100"><ZoomInIcon size={14} /></button>
-              <button onClick={() => setZoom((z) => Math.max(z / 1.3, 0.2))} className="p-1.5 rounded hover:bg-gray-100"><ZoomOutIcon size={14} /></button>
-              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="p-1.5 rounded hover:bg-gray-100"><MaximizeIcon size={14} /></button>
-              <span className="text-xs text-gray-400 ml-2">{Math.round(zoom * 100)}%</span>
-              {isLoading && <Loader2Icon size={14} className="animate-spin text-blue-500 ml-auto" />}
+            <div className="h-10 border-b border-stone-200 flex items-center px-4 gap-2 shrink-0">
+              <button onClick={() => setZoom((z) => Math.min(z * 1.3, 5))} className="p-1.5 rounded hover:bg-stone-100"><ZoomInIcon size={14} /></button>
+              <button onClick={() => setZoom((z) => Math.max(z / 1.3, 0.2))} className="p-1.5 rounded hover:bg-stone-100"><ZoomOutIcon size={14} /></button>
+              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="p-1.5 rounded hover:bg-stone-100"><MaximizeIcon size={14} /></button>
+              <span className="text-xs text-stone-400 ml-2">{Math.round(zoom * 100)}%</span>
+              {isLoading && <Loader2Icon size={14} className="animate-spin text-emerald-500 ml-auto" />}
             </div>
             <canvas ref={canvasRef} className="flex-1 w-full" style={{ cursor: "grab" }}
               onClick={handleCanvasClick}
