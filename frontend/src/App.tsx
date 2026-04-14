@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AppSidebar } from "./components/AppSidebar";
 import { ChatPage } from "./pages/ChatPage";
-import { KnowledgeBasePage } from "./pages/KnowledgeBasePage";
+import { KnowledgeBasePage, ToastContainer } from "./pages/KnowledgeBasePage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -21,6 +21,7 @@ export function App() {
 
   return (
     <div className="h-screen flex bg-stone-100 overflow-hidden">
+      <ToastContainer />
       <AppSidebar nav={nav} onNavigate={setNav} />
       <main className="flex-1 flex overflow-hidden bg-stone-50 text-stone-900">
         {nav.page === "chat" && <ChatPage kbId={nav.kbId} />}

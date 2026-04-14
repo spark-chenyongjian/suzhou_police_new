@@ -1,12 +1,23 @@
 const BASE_URL = import.meta.env.PROD ? "" : "http://localhost:21000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const resp = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!resp.ok) throw new Error(`API error: ${resp.status} ${resp.statusText}`);
-  return resp.json();
+  const url = BASE_URL ? `${BASE_URL}${path}` : path;
+  try {
+    const resp = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      throw new Error(`HTTP ${resp.status}: ${text || resp.statusText}`);
+    }
+    return resp.json();
+  } catch (err) {
+    if (err instanceof TypeError && err.message.includes("fetch")) {
+      throw new Error(`网络错误: 无法连接到服务器 (${url})`);
+    }
+    throw err;
+  }
 }
 
 export interface SessionInfo {
